@@ -1,11 +1,11 @@
-export default function SidebarLeft() {
+export default function SidebarRight() {
   return (
-    <aside className="panel-floating panel-left">
-      <h2>FILTROS</h2>
-      <div style={{color: 'var(--text-secondary)'}}>
-        <p>COLEÇÕES (Select...)</p>
-        <p>TERRITÓRIOS (Accordion...)</p>
-        <p>CLASSES (Legenda...)</p>
+    <aside className="panel-floating panel-right">
+      <h2>ESTATÍSTICAS</h2>
+      <div style={{color: 'var(--text-main)'}}>
+        <p>Cards de resumo...</p>
+        <p>Gráficos...</p>
+        <p>Exportação...</p>
       </div>
     </aside>
   );
