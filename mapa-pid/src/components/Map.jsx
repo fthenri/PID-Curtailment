@@ -36,5 +36,5 @@ export default function Map() {
     });
   }, []);
 
-  return <div ref={mapContainer} className="map-container" />;
+  return <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />;
 }
