@@ -20,19 +20,38 @@ function App() {
   const [localSelecionado, setLocalSelecionado] = useState(null);
   const mapRef = useRef(null);
 
-  // Só é chamado ao clicar em "Aplicar Filtros"
+  // Chamado ao clicar em "Aplicar Filtros"
   const handleApplyFilters = useCallback((filters) => {
     const { region, state, municipality } = filters;
 
     if (municipality && municipality !== 'Todos') {
-      mapRef.current?.flyToMunicipality(municipality, STATE_SIGLA[state]);
+      const sigla = STATE_SIGLA[state];
+      mapRef.current?.flyToMunicipality(municipality, sigla);
+      mapRef.current?.focusFeature('municipality', municipality, sigla);
+
     } else if (state && state !== 'Todos') {
       mapRef.current?.flyToState(state);
+      mapRef.current?.focusFeature('state', state);
+
     } else if (region && region !== 'Todos') {
       mapRef.current?.flyToRegion(region);
+      mapRef.current?.focusFeature('region', region);
+
     } else {
+      // "Todos" em todos os níveis → reseta foco e volta ao Brasil
       mapRef.current?.flyToBrazil();
+      mapRef.current?.resetFocus();
+      setLocalSelecionado(null);
     }
+  }, []);
+
+  // Chamado ao clicar em "Limpar Filtros" (via onApplyFilters com tudo em 'Todos')
+  // SidebarLeft já chama onApplyFilters com estado zerado no handleClear,
+  // mas também expõe onClearFilters para um reset explícito se necessário.
+  const handleClearFilters = useCallback(() => {
+    mapRef.current?.flyToBrazil();
+    mapRef.current?.resetFocus();
+    setLocalSelecionado(null);
   }, []);
 
   const selectedRegion = localSelecionado
@@ -52,7 +71,10 @@ function App() {
 
       {/* ── Corpo 3 colunas ── */}
       <div className="app-body">
-        <SidebarLeft onApplyFilters={handleApplyFilters} />
+        <SidebarLeft
+          onApplyFilters={handleApplyFilters}
+          onClearFilters={handleClearFilters}
+        />
 
         {/* Área central */}
         <div className="map-container">
