@@ -1,36 +1,61 @@
 // src/App.jsx
-// linha 1 — adicione o import no topo do arquivo
 import logoImg from './assets/logo.svg';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Map from './components/Map';
 import SidebarLeft from './components/SidebarLeft';
 import SidebarRight from './components/SidebarRight';
 import './App.css';
 
+// Nome do estado → sigla IBGE
+const STATE_SIGLA = {
+  'Acre':'AC','Amazonas':'AM','Roraima':'RR','Rondônia':'RO','Pará':'PA','Amapá':'AP','Tocantins':'TO',
+  'Maranhão':'MA','Piauí':'PI','Ceará':'CE','Rio Grande do Norte':'RN','Paraíba':'PB',
+  'Pernambuco':'PE','Alagoas':'AL','Sergipe':'SE','Bahia':'BA',
+  'Mato Grosso':'MT','Mato Grosso do Sul':'MS','Goiás':'GO','Distrito Federal':'DF',
+  'Minas Gerais':'MG','Espírito Santo':'ES','Rio de Janeiro':'RJ','São Paulo':'SP',
+  'Paraná':'PR','Santa Catarina':'SC','Rio Grande do Sul':'RS',
+};
+
 function App() {
-  const [selectedRegion, setSelectedRegion] = useState('Pernambuco');
   const [localSelecionado, setLocalSelecionado] = useState(null);
+  const mapRef = useRef(null);
+
+  // Só é chamado ao clicar em "Aplicar Filtros"
+  const handleApplyFilters = useCallback((filters) => {
+    const { region, state, municipality } = filters;
+
+    if (municipality && municipality !== 'Todos') {
+      mapRef.current?.flyToMunicipality(municipality, STATE_SIGLA[state]);
+    } else if (state && state !== 'Todos') {
+      mapRef.current?.flyToState(state);
+    } else if (region && region !== 'Todos') {
+      mapRef.current?.flyToRegion(region);
+    } else {
+      mapRef.current?.flyToBrazil();
+    }
+  }, []);
+
+  const selectedRegion = localSelecionado
+    ? `${localSelecionado.NM_MUN}${localSelecionado.SIGLA_UF ? ' — ' + localSelecionado.SIGLA_UF : ''}`
+    : 'Clique no mapa para selecionar';
 
   return (
     <div className="app-wrapper">
       {/* ── Header ── */}
       <header className="app-header">
-      
-
-<img
-  src={logoImg}
-  alt="Plataforma Interativa de Descarbonização"
-  style={{ height: '48px', width: 'auto', display: 'block' }}
-/>
+        <img
+          src={logoImg}
+          alt="Plataforma Interativa de Descarbonização"
+          style={{ height: '80px', width: 'auto', display: 'block' }}
+        />
       </header>
 
       {/* ── Corpo 3 colunas ── */}
       <div className="app-body">
-        <SidebarLeft onFilterChange={() => {}} />
+        <SidebarLeft onApplyFilters={handleApplyFilters} />
 
-        {/* Área central: mapa + header + legenda */}
+        {/* Área central */}
         <div className="map-container">
-          {/* Cabeçalho interno do mapa */}
           <div className="map-header">
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <span className="map-header-label">Visualização</span>
@@ -38,18 +63,10 @@ function App() {
             </div>
           </div>
 
-          {/* Mapa ocupa o espaço restante (abaixo do header e acima da legenda) */}
-          <div style={{
-            position: 'absolute',
-            top: '45px',    /* altura do map-header */
-            bottom: '58px', /* altura da legenda */
-            left: 0,
-            right: 0,
-          }}>
-            <Map onMunicipioClick={setLocalSelecionado} />
+          <div style={{ position: 'absolute', top: '45px', bottom: '58px', left: 0, right: 0 }}>
+            <Map ref={mapRef} onMunicipioClick={setLocalSelecionado} />
           </div>
 
-          {/* Tooltip do município selecionado */}
           {localSelecionado && (
             <div className="map-tooltip">
               <strong>{localSelecionado.NM_MUN}</strong>
@@ -61,7 +78,6 @@ function App() {
             </div>
           )}
 
-          {/* Legenda fixa na base */}
           <div className="map-legend">
             <span className="map-legend-title">Intensidade de Curtailment</span>
             <div className="map-legend-items">

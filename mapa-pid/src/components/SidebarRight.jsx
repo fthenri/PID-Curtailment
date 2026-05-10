@@ -221,8 +221,8 @@ export default function SidebarRight({ selectedRegion = 'Pernambuco' }) {
         <div className="panel-header-row">
           <BarChart3 size={16} />
           <span className="panel-title">Análise Regional</span>
+          <p className="panel-subtitle">{selectedRegion}</p>
         </div>
-        <p className="panel-subtitle">{selectedRegion}</p>
       </div>
 
       <div className="panel-scroll">

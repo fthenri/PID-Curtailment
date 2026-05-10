@@ -2,21 +2,44 @@
 import { useState, useEffect } from 'react';
 import { SlidersHorizontal, ChevronDown } from 'lucide-react';
 
-const NORTHEAST_STATES = [
-  'Bahia', 'Pernambuco', 'Ceará', 'Rio Grande do Norte',
-  'Paraíba', 'Alagoas', 'Sergipe', 'Maranhão', 'Piauí',
-];
-
-const getMunicipalities = (state) => {
-  if (state === 'Pernambuco') return ['Recife', 'Jaboatão dos Guararapes', 'Olinda', 'Caruaru', 'Petrolina'];
-  return [];
+const REGIOES = {
+  'Todos': [],
+  'Norte':        ['Acre','Amazonas','Roraima','Rondônia','Pará','Amapá','Tocantins'],
+  'Nordeste':     ['Bahia','Pernambuco','Ceará','Rio Grande do Norte','Paraíba','Alagoas','Sergipe','Maranhão','Piauí'],
+  'Centro-Oeste': ['Goiás','Mato Grosso','Mato Grosso do Sul','Distrito Federal'],
+  'Sudeste':      ['São Paulo','Rio de Janeiro','Minas Gerais','Espírito Santo'],
+  'Sul':          ['Paraná','Santa Catarina','Rio Grande do Sul'],
 };
 
-const getBiomes = (state) => {
-  if (state === 'Pernambuco') return ['Caatinga', 'Mata Atlântica'];
-  if (state === 'Bahia') return ['Caatinga', 'Cerrado', 'Mata Atlântica'];
-  if (state === 'Maranhão') return ['Cerrado', 'Amazônia'];
-  return ['Caatinga', 'Mata Atlântica', 'Cerrado'];
+// Municípios por estado (expanda conforme necessário)
+const MUNICIPIOS_POR_ESTADO = {
+  'Pernambuco':          ['Recife','Jaboatão dos Guararapes','Olinda','Caruaru','Petrolina','Camaçari'],
+  'Bahia':               ['Salvador','Feira de Santana','Vitória da Conquista','Camaçari','Juazeiro'],
+  'Ceará':               ['Fortaleza','Caucaia','Juazeiro do Norte','Maracanaú','Sobral'],
+  'Rio Grande do Norte': ['Natal','Mossoró','Parnamirim','São Gonçalo do Amarante','Macaíba'],
+  'Paraíba':             ['João Pessoa','Campina Grande','Santa Rita','Patos','Bayeux'],
+  'Alagoas':             ['Maceió','Arapiraca','Rio Largo','Palmeira dos Índios','União dos Palmares'],
+  'Sergipe':             ['Aracaju','Nossa Senhora do Socorro','Lagarto','Itabaiana','São Cristóvão'],
+  'Maranhão':            ['São Luís','Imperatriz','São José de Ribamar','Timon','Caxias'],
+  'Piauí':               ['Teresina','Timon','Parnaíba','Picos','Campo Maior'],
+  'São Paulo':           ['São Paulo','Guarulhos','Campinas','São Bernardo do Campo','Santo André'],
+  'Rio de Janeiro':      ['Rio de Janeiro','São Gonçalo','Duque de Caxias','Nova Iguaçu','Niterói'],
+  'Minas Gerais':        ['Belo Horizonte','Uberlândia','Contagem','Juiz de Fora','Betim'],
+  'Espírito Santo':      ['Vitória','Serra','Vila Velha','Cariacica','Cachoeiro de Itapemirim'],
+  'Paraná':              ['Curitiba','Londrina','Maringá','Ponta Grossa','Cascavel'],
+  'Santa Catarina':      ['Florianópolis','Joinville','Blumenau','São José','Criciúma'],
+  'Rio Grande do Sul':   ['Porto Alegre','Caxias do Sul','Pelotas','Canoas','Santa Maria'],
+  'Goiás':               ['Goiânia','Aparecida de Goiânia','Anápolis','Rio Verde','Luziânia'],
+  'Mato Grosso':         ['Cuiabá','Várzea Grande','Rondonópolis','Sinop','Tangará da Serra'],
+  'Mato Grosso do Sul':  ['Campo Grande','Dourados','Três Lagoas','Corumbá','Ponta Porã'],
+  'Distrito Federal':    ['Brasília','Ceilândia','Taguatinga','Samambaia','Planaltina'],
+  'Acre':                ['Rio Branco','Cruzeiro do Sul','Sena Madureira','Tarauacá','Feijó'],
+  'Amazonas':            ['Manaus','Parintins','Itacoatiara','Manacapuru','Coari'],
+  'Roraima':             ['Boa Vista','Caracaraí','Rorainópolis','Mucajaí','Alto Alegre'],
+  'Rondônia':            ['Porto Velho','Ji-Paraná','Ariquemes','Cacoal','Vilhena'],
+  'Pará':                ['Belém','Ananindeua','Santarém','Marabá','Castanhal'],
+  'Amapá':               ['Macapá','Santana','Laranjal do Jari','Oiapoque','Mazagão'],
+  'Tocantins':           ['Palmas','Araguaína','Gurupi','Porto Nacional','Paraíso do Tocantins'],
 };
 
 function FilterSelect({ label, value, options, onChange, disabled = false }) {
@@ -40,9 +63,9 @@ function FilterSelect({ label, value, options, onChange, disabled = false }) {
   );
 }
 
-export default function SidebarLeft({ onFilterChange }) {
+export default function SidebarLeft({ onApplyFilters }) {
   const [filters, setFilters] = useState({
-    region: 'Nordeste',
+    region: 'Todos',
     state: 'Todos',
     municipality: 'Todos',
     biome: 'Todos',
@@ -53,68 +76,78 @@ export default function SidebarLeft({ onFilterChange }) {
     landCover: 'Todas',
   });
 
-  const [municipalities, setMunicipalities] = useState([]);
-  const [biomes, setBiomes] = useState([]);
+  const [availableStates, setAvailableStates]         = useState(Object.values(REGIOES).flat().sort());
+  const [availableMunicipalities, setAvailableMunicipalities] = useState([]);
+
+  useEffect(() => {
+    if (filters.region === 'Todos') {
+      setAvailableStates(Object.values(REGIOES).flat().sort());
+    } else {
+      setAvailableStates(REGIOES[filters.region] || []);
+    }
+    setFilters(prev => ({ ...prev, state: 'Todos', municipality: 'Todos' }));
+  }, [filters.region]);
 
   useEffect(() => {
     if (filters.state === 'Todos') {
-      setMunicipalities([]);
-      setBiomes([]);
+      setAvailableMunicipalities([]);
     } else {
-      setMunicipalities(getMunicipalities(filters.state));
-      setBiomes(getBiomes(filters.state));
+      setAvailableMunicipalities(MUNICIPIOS_POR_ESTADO[filters.state] || []);
     }
+    setFilters(prev => ({ ...prev, municipality: 'Todos' }));
   }, [filters.state]);
 
-  useEffect(() => {
-    onFilterChange?.(filters);
-  }, [filters]);
-
   const update = (key, value) =>
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters(prev => ({ ...prev, [key]: value }));
 
-  const handleStateChange = (state) =>
-    setFilters((prev) => ({ ...prev, state, municipality: 'Todos', biome: 'Todos' }));
+  const handleApply = () => {
+    onApplyFilters?.(filters);
+  };
 
-  const handleClear = () =>
+  const handleClear = () => {
     setFilters({
-      region: 'Nordeste', state: 'Todos', municipality: 'Todos',
+      region: 'Todos', state: 'Todos', municipality: 'Todos',
       biome: 'Todos', year: '2026', month: 'Todos',
       energySource: 'Todas', curtailmentLevel: 'Todos', landCover: 'Todas',
     });
+    // Aplica imediatamente o clear
+    onApplyFilters?.({
+      region: 'Todos', state: 'Todos', municipality: 'Todos',
+    });
+  };
 
   return (
     <aside className="panel-left">
-      {/* Cabeçalho */}
       <div className="panel-header">
         <div className="panel-header-row">
           <SlidersHorizontal size={16} />
           <span className="panel-title">Filtros</span>
+          <p className="panel-subtitle">Refine sua análise territorial</p>
         </div>
-        <p className="panel-subtitle">Refine sua análise territorial</p>
       </div>
 
-      {/* Selects */}
       <div className="panel-scroll">
         <div className="panel-content">
           <FilterSelect label="Região" value={filters.region}
-            options={['Nordeste']} onChange={(v) => update('region', v)} />
+            options={['Todos', ...Object.keys(REGIOES).filter(r => r !== 'Todos')]}
+            onChange={(v) => update('region', v)} />
 
           <FilterSelect label="Estado" value={filters.state}
-            options={['Todos', ...NORTHEAST_STATES]} onChange={handleStateChange} />
+            options={['Todos', ...availableStates]}
+            onChange={(v) => update('state', v)}
+            disabled={availableStates.length === 0} />
 
           <FilterSelect label="Município" value={filters.municipality}
-            options={municipalities.length ? ['Todos', ...municipalities] : ['Todos']}
+            options={availableMunicipalities.length ? ['Todos', ...availableMunicipalities] : ['Todos']}
             onChange={(v) => update('municipality', v)}
-            disabled={municipalities.length === 0} />
+            disabled={availableMunicipalities.length === 0} />
 
           <FilterSelect label="Bioma" value={filters.biome}
-            options={biomes.length ? ['Todos', ...biomes] : ['Todos']}
-            onChange={(v) => update('biome', v)}
-            disabled={biomes.length === 0} />
+            options={['Todos','Amazônia','Caatinga','Cerrado','Mata Atlântica','Pampa','Pantanal']}
+            onChange={(v) => update('biome', v)} />
 
           <FilterSelect label="Ano" value={filters.year}
-            options={['2026', '2025', '2024', '2023', '2022']}
+            options={['2026','2025','2024','2023','2022']}
             onChange={(v) => update('year', v)} />
 
           <FilterSelect label="Mês" value={filters.month}
@@ -136,9 +169,8 @@ export default function SidebarLeft({ onFilterChange }) {
         </div>
       </div>
 
-      {/* Botões */}
       <div className="panel-footer">
-        <button className="btn-primary">Aplicar Filtros</button>
+        <button className="btn-primary" onClick={handleApply}>Aplicar Filtros</button>
         <button className="btn-ghost" onClick={handleClear}>Limpar Filtros</button>
       </div>
     </aside>
