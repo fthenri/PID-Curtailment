@@ -11,7 +11,6 @@ const REGIOES = {
   'Sul':          ['Paraná','Santa Catarina','Rio Grande do Sul'],
 };
 
-// Municípios por estado (expanda conforme necessário)
 const MUNICIPIOS_POR_ESTADO = {
   'Pernambuco':          ['Recife','Jaboatão dos Guararapes','Olinda','Caruaru','Petrolina','Camaçari'],
   'Bahia':               ['Salvador','Feira de Santana','Vitória da Conquista','Camaçari','Juazeiro'],
@@ -42,6 +41,12 @@ const MUNICIPIOS_POR_ESTADO = {
   'Tocantins':           ['Palmas','Araguaína','Gurupi','Porto Nacional','Paraíso do Tocantins'],
 };
 
+const FILTERS_INITIAL = {
+  region: 'Todos', state: 'Todos', municipality: 'Todos',
+  biome: 'Todos', year: '2026', month: 'Todos',
+  energySource: 'Todas', curtailmentLevel: 'Todos', landCover: 'Todas',
+};
+
 function FilterSelect({ label, value, options, onChange, disabled = false }) {
   return (
     <div className="filter-group">
@@ -63,20 +68,9 @@ function FilterSelect({ label, value, options, onChange, disabled = false }) {
   );
 }
 
-export default function SidebarLeft({ onApplyFilters }) {
-  const [filters, setFilters] = useState({
-    region: 'Todos',
-    state: 'Todos',
-    municipality: 'Todos',
-    biome: 'Todos',
-    year: '2026',
-    month: 'Todos',
-    energySource: 'Todas',
-    curtailmentLevel: 'Todos',
-    landCover: 'Todas',
-  });
-
-  const [availableStates, setAvailableStates]         = useState(Object.values(REGIOES).flat().sort());
+export default function SidebarLeft({ onApplyFilters, onClearFilters }) {
+  const [filters, setFilters] = useState(FILTERS_INITIAL);
+  const [availableStates, setAvailableStates]               = useState(Object.values(REGIOES).flat().sort());
   const [availableMunicipalities, setAvailableMunicipalities] = useState([]);
 
   useEffect(() => {
@@ -105,15 +99,11 @@ export default function SidebarLeft({ onApplyFilters }) {
   };
 
   const handleClear = () => {
-    setFilters({
-      region: 'Todos', state: 'Todos', municipality: 'Todos',
-      biome: 'Todos', year: '2026', month: 'Todos',
-      energySource: 'Todas', curtailmentLevel: 'Todos', landCover: 'Todas',
-    });
-    // Aplica imediatamente o clear
-    onApplyFilters?.({
-      region: 'Todos', state: 'Todos', municipality: 'Todos',
-    });
+    setFilters(FILTERS_INITIAL);
+    // Notifica o App para resetar foco no mapa
+    onClearFilters?.();
+    // Também dispara onApplyFilters com tudo zerado para outros consumidores
+    onApplyFilters?.(FILTERS_INITIAL);
   };
 
   return (

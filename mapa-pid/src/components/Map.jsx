@@ -56,11 +56,44 @@ const REGION_BOUNDS = {
 };
 
 const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
-  const mapContainer = useRef(null);
-  const mapInstance  = useRef(null);
-  const geojsonCache = useRef(null);
+  const mapContainer   = useRef(null);
+  const mapInstance    = useRef(null);
+  const geojsonCache   = useRef(null);
+  // Elevados para refs para serem acessíveis fora do closure do useEffect
+  const hoveredStateRef  = useRef({ id: null, source: null });
+  const selectedStateRef = useRef({ id: null, source: null });
 
-  // ── Métodos de navegação expostos para o pai ──────────────────────────────
+  // ── Helpers internos de foco (reutilizados por click e por filtro) ────────
+  const _resetFocusLayers = () => {
+    const m = mapInstance.current;
+    if (!m) return;
+    ['regioes-dim', 'estados-dim', 'municipios-dim'].forEach(layer =>
+      m.setPaintProperty(layer, 'fill-opacity', 0)
+    );
+    if (selectedStateRef.current.id !== null) {
+      m.setFeatureState(
+        { source: selectedStateRef.current.source, id: selectedStateRef.current.id },
+        { selected: false }
+      );
+      selectedStateRef.current = { id: null, source: null };
+    }
+  };
+
+  const _applyFocus = (featureId, source) => {
+    const m = mapInstance.current;
+    if (!m) return;
+    _resetFocusLayers();
+    selectedStateRef.current = { id: featureId, source };
+    m.setFeatureState({ source, id: featureId }, { selected: true });
+    const dimLayer =
+      source.includes('regioes') ? 'regioes-dim' :
+      source.includes('estados') ? 'estados-dim' :
+                                   'municipios-dim';
+    m.setFilter(dimLayer, ['!=', ['id'], featureId]);
+    m.setPaintProperty(dimLayer, 'fill-opacity', 0.5);
+  };
+
+  // ── Métodos expostos para o pai ───────────────────────────────────────────
   useImperativeHandle(ref, () => ({
     flyToBrazil() {
       mapInstance.current?.flyTo({ center: [-55, -15], zoom: 4, essential: true, duration: 1200 });
@@ -90,6 +123,41 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
         [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
         { padding: 80, duration: 1000, maxZoom: 11 }
       );
+    },
+
+    // ── Aplica foco visual via filtro (sidebar) ───────────────────────────
+    // type: 'region' | 'state' | 'municipality'
+    // name: nome do local  |  sigla: SIGLA_UF (só para município)
+    focusFeature(type, name, sigla) {
+      const m = mapInstance.current;
+      if (!m) return;
+
+      if (type === 'region') {
+        // Busca a feature de região pelo nome
+        const features = m.querySourceFeatures('regioes-ibge', {
+          sourceLayer: undefined,
+          filter: ['==', ['get', 'NM_REGIAO'], name],
+        });
+        if (features.length > 0) _applyFocus(features[0].id, 'regioes-ibge');
+
+      } else if (type === 'state') {
+        const features = m.querySourceFeatures('estados-ibge', {
+          filter: ['==', ['get', 'NM_UF'], name],
+        });
+        if (features.length > 0) _applyFocus(features[0].id, 'estados-ibge');
+
+      } else if (type === 'municipality') {
+        const filter = sigla
+          ? ['all', ['==', ['get', 'NM_MUN'], name], ['==', ['get', 'SIGLA_UF'], sigla]]
+          : ['==', ['get', 'NM_MUN'], name];
+        const features = m.querySourceFeatures('municipios-ibge', { filter });
+        if (features.length > 0) _applyFocus(features[0].id, 'municipios-ibge');
+      }
+    },
+
+    // ── Remove foco visual e volta ao estado neutro ───────────────────────
+    resetFocus() {
+      _resetFocusLayers();
     },
   }));
 
@@ -169,6 +237,10 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
         paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.1, 0] },
       });
       mapInstance.current.addLayer({
+        id: 'regioes-selected', type: 'fill', source: 'regioes-ibge', maxzoom: 5,
+        paint: { 'fill-color': '#FFFFFF', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.75, 0] },
+      });
+      mapInstance.current.addLayer({
         id: 'regioes-layer', type: 'line', source: 'regioes-ibge', maxzoom: 5,
         paint: { 'line-color': '#BECCCC', 'line-width': 1.2, 'line-opacity': 0.7 },
       });
@@ -178,6 +250,10 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
       mapInstance.current.addLayer({
         id: 'estados-highlight', type: 'fill', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
         paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.15, 0] },
+      });
+      mapInstance.current.addLayer({
+        id: 'estados-selected', type: 'fill', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
+        paint: { 'fill-color': '#FFFFFF', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.75, 0] },
       });
       mapInstance.current.addLayer({
         id: 'estados-layer', type: 'line', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
@@ -190,9 +266,10 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
         id: 'municipios-highlight', type: 'fill', source: 'municipios-ibge', minzoom: 7.5,
         paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.18, 0] },
       });
+      // Selecionado: branco com opacidade alta para "iluminar" o município
       mapInstance.current.addLayer({
         id: 'municipios-selected', type: 'fill', source: 'municipios-ibge', minzoom: 7.5,
-        paint: { 'fill-color': '#FA441A', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.25, 0] },
+        paint: { 'fill-color': '#FFFFFF', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.85, 0] },
       });
       mapInstance.current.addLayer({
         id: 'municipios-layer', type: 'line', source: 'municipios-ibge', minzoom: 7.5,
@@ -227,11 +304,77 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
         },
       });
 
-      // ── Interatividade ────────────────────────────────────────────────────
-      let hoveredState  = { id: null, source: null };
-      let selectedState = { id: null, source: null };
+      // ── Labels de regiões (zoom < 5) ─────────────────────────────────────
+      mapInstance.current.addLayer({
+        id: 'regioes-label', type: 'symbol', source: 'regioes-ibge', maxzoom: 5,
+        layout: {
+          'text-field': ['get', 'NM_REGIAO'],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 5, 14],
+          'text-anchor': 'center',
+          'text-max-width': 8,
+          'text-letter-spacing': 0.12,
+          'text-transform': 'uppercase',
+        },
+        paint: {
+          'text-color': '#03254D',
+          'text-halo-color': 'rgba(255,255,255,0.85)',
+          'text-halo-width': 2,
+          'text-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0, 3.5, 1],
+        },
+      });
 
-      // Hover: usa camada ativa conforme zoom (mais preciso que doc1)
+      // ── Labels de estados (zoom 5–7.5) ───────────────────────────────────
+      mapInstance.current.addLayer({
+        id: 'estados-label', type: 'symbol', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
+        layout: {
+          'text-field': ['get', 'SIGLA_UF'],
+          'text-font': ['Open Sans SemiBold', 'Arial Unicode MS Bold'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 5, 11, 7.5, 15],
+          'text-anchor': 'center',
+          'text-letter-spacing': 0.08,
+          'text-transform': 'uppercase',
+        },
+        paint: {
+          'text-color': '#03254D',
+          'text-halo-color': 'rgba(255,255,255,0.85)',
+          'text-halo-width': 2,
+          'text-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0, 5.5, 1],
+        },
+      });
+
+      // ── Labels de municípios (zoom >= 7.5) ───────────────────────────────
+      mapInstance.current.addLayer({
+        id: 'municipios-label', type: 'symbol', source: 'municipios-ibge', minzoom: 7.5,
+        layout: {
+          'text-field': ['get', 'NM_MUN'],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 7.5, 9, 10, 13, 13, 16],
+          'text-anchor': 'center',
+          'text-max-width': 7,
+          'text-padding': 2,
+          'text-allow-overlap': false,
+          'symbol-avoid-edges': true,
+        },
+        paint: {
+          'text-color': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false], '#03254D',
+            '#333333',
+          ],
+          'text-halo-color': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false], 'rgba(255,255,255,0.95)',
+            'rgba(255,255,255,0.80)',
+          ],
+          'text-halo-width': 1.5,
+          'text-opacity': ['interpolate', ['linear'], ['zoom'], 7.5, 0, 8.5, 1],
+        },
+      });
+
+      // ── Interatividade ────────────────────────────────────────────────────
+
+      // Hover: usa camada ativa conforme zoom
       mapInstance.current.on('mousemove', (e) => {
         const zoom = mapInstance.current.getZoom();
         const activeLayers =
@@ -244,15 +387,15 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
         if (features.length > 0) {
           mapInstance.current.getCanvas().style.cursor = 'pointer';
           const f = features[0];
-          if (hoveredState.id !== null)
-            mapInstance.current.setFeatureState({ source: hoveredState.source, id: hoveredState.id }, { hover: false });
-          hoveredState = { id: f.id, source: f.source };
+          if (hoveredStateRef.current.id !== null)
+            mapInstance.current.setFeatureState({ source: hoveredStateRef.current.source, id: hoveredStateRef.current.id }, { hover: false });
+          hoveredStateRef.current = { id: f.id, source: f.source };
           mapInstance.current.setFeatureState({ source: f.source, id: f.id }, { hover: true });
         } else {
           mapInstance.current.getCanvas().style.cursor = '';
-          if (hoveredState.id !== null)
-            mapInstance.current.setFeatureState({ source: hoveredState.source, id: hoveredState.id }, { hover: false });
-          hoveredState = { id: null, source: null };
+          if (hoveredStateRef.current.id !== null)
+            mapInstance.current.setFeatureState({ source: hoveredStateRef.current.source, id: hoveredStateRef.current.id }, { hover: false });
+          hoveredStateRef.current = { id: null, source: null };
         }
       });
 
@@ -266,29 +409,11 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
 
         const features = mapInstance.current.queryRenderedFeatures(e.point, { layers: activeLayers });
 
-        // Reseta escurecimento em todas as camadas dim
-        ['regioes-dim', 'estados-dim', 'municipios-dim'].forEach(layer => {
-          mapInstance.current.setPaintProperty(layer, 'fill-opacity', 0);
-        });
-
         if (features.length > 0) {
           const f = features[0];
 
-          // Desmarca seleção anterior
-          if (selectedState.id !== null)
-            mapInstance.current.setFeatureState({ source: selectedState.source, id: selectedState.id }, { selected: false });
-
-          // Marca nova seleção
-          selectedState = { id: f.id, source: f.source };
-          mapInstance.current.setFeatureState({ source: f.source, id: f.id }, { selected: true });
-
-          // Escurece as outras features da mesma camada
-          const dimLayer =
-            f.source.includes('regioes')    ? 'regioes-dim' :
-            f.source.includes('estados')    ? 'estados-dim' :
-                                              'municipios-dim';
-          mapInstance.current.setFilter(dimLayer, ['!=', ['id'], f.id]);
-          mapInstance.current.setPaintProperty(dimLayer, 'fill-opacity', 0.5);
+          // Aplica foco (já reseta o anterior internamente)
+          _applyFocus(f.id, f.source);
 
           // Callback para município (inclui clique no calor)
           if (f.source.includes('municipios') || f.source === 'calor-municipios')
@@ -301,7 +426,7 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
                                            9.5;
           mapInstance.current.flyTo({ center: e.lngLat, zoom: targetZoom, essential: true, speed: 1.2 });
         } else {
-          selectedState = { id: null, source: null };
+          _resetFocusLayers();
         }
       });
     });
