@@ -2,6 +2,9 @@
 
 > *"Transforme dados em decisões para acelerar a transição energética do Brasil."*
 
+## TESTE NOSSO PROJETO:
+> https://pid-curtailment.vercel.app/
+
 ## 📌 Sobre o Projeto
 O Mapa PID é uma evolução da plataforma PID para uma ferramenta de inteligência geoespacial fluida e interativa. O projeto cruza dados de curtailment com a disponibilidade de vegetação nativa e recursos naturais, traduzindo dados complexos em mensagens-síntese para governos, investidores e usuários comuns. O objetivo é acelerar a tomada de decisão para a transição energética eliminando o processo manual de cruzamento de dados.
 
