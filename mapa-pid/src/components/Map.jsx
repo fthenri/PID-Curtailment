@@ -2,10 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-// Novo link de DATA (GeoJSON) que preserva os atributos
 const DATA_MUNICIPIOS = 'https://api.maptiler.com/data/019e0f97-410a-7425-96f0-12a3e6d892af/features.json?key=j8UzJW3QV4tjV8YFy0i7';
-
-// Mantenha os outros como estão por enquanto ou atualize se fizer o mesmo processo para eles
 const TILEJSON_ESTADOS = 'https://api.maptiler.com/tiles/019e0f1e-cf42-7533-a45b-a952a17e2027/tiles.json?key=2iSGf08Ld0l2ytr6rvRV';
 const TILEJSON_REGIOES = 'https://api.maptiler.com/tiles/019e0f21-35ae-7b4c-8da4-18a34321f800/tiles.json?key=LMVMEPHIf7vzxWZQP1md';
 const TILEJSON_PAIS = 'https://api.maptiler.com/tiles/019e0f22-4f2f-7e49-a0cd-2fdb061be3c8/tiles.json?key=OM8hPVpAd6P8jEpCnFmc';
@@ -26,17 +23,16 @@ export default function Map() {
     });
 
     map.current.on('load', () => {
-      // 1. Fontes - Note que mudamos 'municipios-ibge' para geojson
       map.current.addSource('pais-ibge', { type: 'vector', url: TILEJSON_PAIS });
       map.current.addSource('regioes-ibge', { type: 'vector', url: TILEJSON_REGIOES });
       map.current.addSource('estados-ibge', { type: 'vector', url: TILEJSON_ESTADOS });
       
       map.current.addSource('municipios-ibge', { 
         type: 'geojson', 
-        data: DATA_MUNICIPIOS // Usando o link de features.json
+        data: DATA_MUNICIPIOS,
+        generateId: true // Gera ID único para cada município para otimizar o hover
       });
 
-      // 2. Camadas de Estados e superiores (continuam como vector por enquanto)
       map.current.addLayer({
         id: 'estados-layer',
         type: 'line',
@@ -47,11 +43,11 @@ export default function Map() {
         paint: { 'line-color': '#39FF14', 'line-width': 1.2, 'line-opacity': 0.7 }
       });
 
-      // 3. Camadas de Municípios - SEM 'source-layer'
       map.current.addLayer({
         id: 'municipios-fill',
         type: 'fill',
         source: 'municipios-ibge',
+        minzoom: 7.5,
         paint: { 'fill-color': 'rgba(0,0,0,0)' } 
       });
 
@@ -59,21 +55,26 @@ export default function Map() {
         id: 'municipios-highlight',
         type: 'fill',
         source: 'municipios-ibge',
+        minzoom: 7.5,
         paint: {
           'fill-color': '#39FF14',
-          'fill-opacity': 0.3
-        },
-        filter: ['==', ['get', 'CD_MUN'], ''] 
+          'fill-opacity': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            0.3, // Opacidade quando o estado for 'hover'
+            0    // Opacidade padrão
+          ]
+        }
       });
 
       map.current.addLayer({
         id: 'municipios-layer',
         type: 'line',
         source: 'municipios-ibge',
+        minzoom: 7.5,
         paint: { 'line-color': '#39FF14', 'line-width': 0.6, 'line-opacity': 0.8 }
       });
 
-      // Camada de pontos
       map.current.addSource('curtailment', {
         type: 'geojson',
         data: '/mapa_curtailment.geojson'
@@ -91,21 +92,36 @@ export default function Map() {
         }
       });
 
-      // --- Eventos Interativos ---
+      let hoveredStateId = null;
+
       map.current.on('mousemove', 'municipios-fill', (e) => {
-        if (e.features.length > 0 && map.current.getCanvas()) {
-          const feature = e.features[0];
-          // Agora o CD_MUN virá corretamente
-          map.current.setFilter('municipios-highlight', ['==', ['get', 'CD_MUN'], feature.properties.CD_MUN]);
+        if (e.features.length > 0) {
           map.current.getCanvas().style.cursor = 'pointer';
+          
+          if (hoveredStateId !== null) {
+            map.current.setFeatureState(
+              { source: 'municipios-ibge', id: hoveredStateId },
+              { hover: false } // Limpa o estado anterior
+            );
+          }
+          
+          hoveredStateId = e.features[0].id;
+          map.current.setFeatureState(
+            { source: 'municipios-ibge', id: hoveredStateId },
+            { hover: true } // Ativa o novo estado de hover
+          );
         }
       });
 
       map.current.on('mouseleave', 'municipios-fill', () => {
-        if (map.current.getCanvas()) {
-          map.current.setFilter('municipios-highlight', ['==', ['get', 'CD_MUN'], '']);
-          map.current.getCanvas().style.cursor = '';
+        map.current.getCanvas().style.cursor = '';
+        if (hoveredStateId !== null) {
+          map.current.setFeatureState(
+            { source: 'municipios-ibge', id: hoveredStateId },
+            { hover: false }
+          );
         }
+        hoveredStateId = null;
       });
 
       map.current.on('click', 'municipios-fill', (e) => {
