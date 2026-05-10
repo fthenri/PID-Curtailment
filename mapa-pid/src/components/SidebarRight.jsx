@@ -1,218 +1,372 @@
 // src/components/SidebarRight.jsx
 import { useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts';
-import { BarChart3, Maximize2, Download, Share2, X, Zap, Leaf, TrendingUp } from 'lucide-react';
+import { BarChart3, Landmark, TrendingUp, X, Maximize2, ChevronRight } from 'lucide-react';
 
-/* ── Dados estáticos ── */
-const curtailmentData = [
-  { month: 'Jan', disponivel: 100, utilizado: 72 },
-  { month: 'Fev', disponivel: 100, utilizado: 68 },
-  { month: 'Mar', disponivel: 100, utilizado: 75 },
-  { month: 'Abr', disponivel: 100, utilizado: 70 },
-  { month: 'Mai', disponivel: 100, utilizado: 72 },
-  { month: 'Jun', disponivel: 100, utilizado: 74 },
-];
-
-const landCoverData = [
-  { name: 'Área Agrícola', curtailment: 42, color: '#F89069' },
-  { name: 'Pastagem',      curtailment: 28, color: '#4D4E03' },
-  { name: 'Floresta',      curtailment: 18, color: '#BECCCC' },
-  { name: 'Área Urbana',   curtailment: 12, color: '#B5446E' },
-];
-
-const opportunityData = [
-  { quarter: 'T1 2026', potencial: 45 },
-  { quarter: 'T2 2026', potencial: 58 },
-  { quarter: 'T3 2026', potencial: 72 },
-  { quarter: 'T4 2026', potencial: 85 },
-];
-
-const tooltipStyle = {
-  contentStyle: {
-    backgroundColor: '#fff',
-    border: '1px solid #E5E4E7',
-    borderRadius: 8,
-    fontSize: 13,
-    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-  },
+// ── Paleta compartilhada ────────────────────────────────────────────────────
+const C = {
+  brand:   '#FA441A',
+  navy:    '#03254D',
+  teal:    '#9EAFB0',
+  soft:    '#BECCCC',
+  green:   '#059669',
+  yellow:  '#F5F749',
+  warn:    '#F89069',
+  purple:  '#B5446E',
+  dark:    '#550C18',
+  border:  '#E5E4E7',
+  text:    '#1a1a2e',
+  sub:     '#6B6375',
+  bg:      '#F7F8FA',
 };
 
-/* ── Componente InsightCard ── */
-function InsightCard({ cardId, title, subtitle, preview, children, onExpand, onDownload, onShare }) {
+const TT = {
+  contentStyle: {
+    backgroundColor: '#fff', border: `1px solid ${C.border}`,
+    borderRadius: 8, fontSize: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+  },
+  cursor: { fill: 'rgba(250,68,26,0.04)' },
+};
+
+// ── Mock data — Governo ─────────────────────────────────────────────────────
+const hourlyData = Array.from({ length: 24 }, (_, h) => ({
+  hora: `${String(h).padStart(2, '0')}h`,
+  solar: h >= 6 && h <= 18
+    ? Math.round(Math.max(0, 80 * Math.sin(((h - 6) / 12) * Math.PI)) + Math.random() * 15)
+    : 0,
+  eolica: Math.round(20 + (h < 6 || h > 20 ? 35 : 10) + Math.random() * 10),
+}));
+
+const municipiosCriticos = [
+  { mun: 'Petrolina',        curtailment: 312 },
+  { mun: 'Mossoró',          curtailment: 278 },
+  { mun: 'Juazeiro',         curtailment: 241 },
+  { mun: 'Sobral',           curtailment: 198 },
+  { mun: 'Caruaru',          curtailment: 172 },
+  { mun: 'Campina Grande',   curtailment: 154 },
+  { mun: 'Parnaíba',         curtailment: 131 },
+  { mun: 'Pau dos Ferros',   curtailment: 118 },
+  { mun: 'Salgueiro',        curtailment: 102 },
+  { mun: 'Patos',            curtailment:  88 },
+];
+
+const fluxoData = [
+  { rota: 'NE → SE',  valor: 1842, cor: C.brand },
+  { rota: 'NE → N',   valor:  634, cor: C.navy },
+  { rota: 'N → SE',   valor:  411, cor: C.teal },
+  { rota: 'CO → SE',  valor:  295, cor: C.purple },
+  { rota: 'S → SE',   valor:  183, cor: C.warn },
+];
+
+// ── Mock data — Investidor ──────────────────────────────────────────────────
+const abundanciaData = [
+  { mes: 'Jan', hidrica: 45, eolica: 120, solar: 210 },
+  { mes: 'Fev', hidrica: 38, eolica: 145, solar: 195 },
+  { mes: 'Mar', hidrica: 52, eolica: 132, solar: 230 },
+  { mes: 'Abr', hidrica: 41, eolica: 118, solar: 248 },
+  { mes: 'Mai', hidrica: 60, eolica: 155, solar: 265 },
+  { mes: 'Jun', hidrica: 55, eolica: 168, solar: 220 },
+];
+
+const capacidadeData = [
+  { name: 'Utilizada',  value: 62, color: C.navy },
+  { name: 'Ociosa',     value: 38, color: C.brand },
+];
+
+// ── Sub-componentes ─────────────────────────────────────────────────────────
+
+function TabBtn({ active, onClick, icon: Icon, label }) {
   return (
-    <div className="insight-card">
-      <div className="insight-card-header">
-        <div className="insight-card-titles">
-          <div className="insight-card-title">{title}</div>
-          <div className="insight-card-subtitle">{subtitle}</div>
-        </div>
-        <div className="insight-card-actions">
-          <button className="icon-btn" title="Expandir" onClick={() => onExpand(cardId)}>
-            <Maximize2 size={14} />
-          </button>
-          <button className="icon-btn" title="Baixar" onClick={() => onDownload(cardId)}>
-            <Download size={14} />
-          </button>
-          <button className="icon-btn" title="Compartilhar" onClick={() => onShare(cardId)}>
-            <Share2 size={14} />
-          </button>
-        </div>
-      </div>
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 6, padding: '9px 6px', border: 'none', cursor: 'pointer',
+        borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.18s',
+        backgroundColor: active ? C.navy : 'transparent',
+        color: active ? '#fff' : C.sub,
+      }}
+    >
+      <Icon size={13} />
+      {label}
+    </button>
+  );
+}
 
-      <div className="insight-preview">
-        <p>{preview}</p>
-        <button className="insight-preview-link" onClick={() => onExpand(cardId)}>
-          Ver mais
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-            <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-      </div>
+function SectionTitle({ children, badge }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text, letterSpacing: '0.01em' }}>
+        {children}
+      </span>
+      {badge && (
+        <span style={{
+          fontSize: '0.68rem', fontWeight: 600, padding: '2px 8px',
+          borderRadius: 20, backgroundColor: `${C.brand}15`, color: C.brand,
+        }}>
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
 
+function Insight({ text }) {
+  return (
+    <div style={{
+      backgroundColor: `${C.navy}08`, borderLeft: `3px solid ${C.navy}`,
+      borderRadius: '0 8px 8px 0', padding: '8px 12px', marginTop: 10,
+    }}>
+      <p style={{ fontSize: '0.73rem', color: C.navy, lineHeight: 1.55, margin: 0, fontStyle: 'italic' }}>
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function Card({ children, style }) {
+  return (
+    <div style={{
+      backgroundColor: '#fff', borderRadius: 12,
+      border: `1px solid ${C.border}`, padding: '14px 14px 12px',
+      marginBottom: 12, ...style,
+    }}>
       {children}
     </div>
   );
 }
 
-/* ── Modal expandido ── */
-function ExpandedModal({ cardId, regionName, onClose }) {
-  const contents = {
-    'energy-unused': {
-      title: 'Energia Não Utilizada',
-      subtitle: 'Evolução mensal',
-      metrics: [
-        { label: 'Curtailment médio', value: '28%', color: '#DC2626' },
-        { label: 'Pico de curtailment', value: '32% (Fev)', color: '#03254D' },
-        { label: 'Energia desperdiçada/mês', value: '1.2 GWh', color: 'var(--title-color)' },
-      ],
-      summary: `Em ${regionName}, observa-se curtailment médio de 28% no semestre, com pico em fevereiro (32%). Aproximadamente 1.2 GWh mensais não são aproveitados.`,
-      chart: (
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={curtailmentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E4E7" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6B6375' }} axisLine={{ stroke: '#E5E4E7' }} tickLine={false} />
-            <YAxis tick={{ fontSize: 12, fill: '#6B6375' }} axisLine={false} tickLine={false} />
-            <Tooltip {...tooltipStyle} cursor={{ fill: 'rgba(250,68,26,0.05)' }} />
-            <Bar dataKey="disponivel" fill="#E5E4E7" radius={[4,4,0,0]} name="Disponível" />
-            <Bar dataKey="utilizado" fill="#FA441A" radius={[4,4,0,0]} name="Utilizado" />
-          </BarChart>
-        </ResponsiveContainer>
-      ),
-    },
-    'territorial-context': {
-      title: 'Contexto Territorial de Curtailment',
-      subtitle: 'Curtailment por tipo de cobertura',
-      metrics: [
-        { label: 'Área predominante', value: 'Agrícola (42%)', color: '#03254D' },
-        { label: 'Maior oportunidade', value: 'Integração agro-solar', color: '#03254D' },
-        { label: 'Menor curtailment', value: 'Área urbana (12%)', color: '#03254D' },
-      ],
-      summary: `O curtailment em ${regionName} concentra-se em áreas agrícolas (42%), seguido por pastagens (28%). Floresta: 18%, Urbano: 12%.`,
-      chart: (
-        <ResponsiveContainer width="100%" height={220}>
-          <PieChart>
-            <Pie data={landCoverData} cx="50%" cy="50%" innerRadius={55} outerRadius={85}
-              paddingAngle={3} dataKey="curtailment">
-              {landCoverData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-            </Pie>
-            <Tooltip {...tooltipStyle} />
-          </PieChart>
-        </ResponsiveContainer>
-      ),
-    },
-    'economic-opportunity': {
-      title: 'Oportunidade Econômica',
-      subtitle: 'Projeção de potencial',
-      metrics: [
-        { label: 'Retorno anual estimado', value: 'R$ 2,4M', color: '#059669' },
-        { label: 'Crescimento projetado', value: '+89% (ano)', color: '#059669' },
-        { label: 'Payback estimado', value: '3.2 anos', color: 'var(--title-color)' },
-      ],
-      summary: `Aproveitamento integral da energia perdida em ${regionName} representa R$ 2,4M anuais com crescimento de 89% ao longo de 2026. Payback de 3.2 anos.`,
-      chart: (
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={opportunityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="gradModal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#FA441A" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#FA441A" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E4E7" vertical={false} />
-            <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6B6375' }} axisLine={{ stroke: '#E5E4E7' }} tickLine={false} />
-            <YAxis tick={{ fontSize: 12, fill: '#6B6375' }} axisLine={false} tickLine={false} />
-            <Tooltip {...tooltipStyle} />
-            <Area type="monotone" dataKey="potencial" stroke="#FA441A" strokeWidth={2.5}
-              fill="url(#gradModal)" name="Potencial" />
-          </AreaChart>
-        </ResponsiveContainer>
-      ),
-    },
-  };
-
-  const c = contents[cardId];
-  if (!c) return null;
+// ── Painel Governo ──────────────────────────────────────────────────────────
+function PainelGoverno({ selectedRegion }) {
+  const peakHour = hourlyData.reduce((max, d) =>
+    (d.solar + d.eolica) > (max.solar + max.eolica) ? d : max, hourlyData[0]);
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24, backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-          maxWidth: 580, width: '100%', maxHeight: '80vh', overflowY: 'auto',
-        }}
-      >
-        {/* header modal */}
-        <div style={{
-          position: 'sticky', top: 0, backgroundColor: '#fff',
-          borderBottom: '1px solid var(--border)', padding: '20px 24px',
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', zIndex: 1,
-        }}>
-          <div>
-            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--title-color)' }}>{c.title}</div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--subtitle-color)', marginTop: 2 }}>{c.subtitle}</div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--brand-primary)', fontWeight: 500, marginTop: 2 }}>{regionName}</div>
-          </div>
-          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* 1. Perfil Horário */}
+      <Card>
+        <SectionTitle badge="24h">Perfil Horário de Curtailment</SectionTitle>
+        <ResponsiveContainer width="100%" height={130}>
+          <AreaChart data={hourlyData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gSolar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={C.brand} stopOpacity={0.35} />
+                <stop offset="95%" stopColor={C.brand} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gEolica" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={C.navy} stopOpacity={0.25} />
+                <stop offset="95%" stopColor={C.navy} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
+            <XAxis dataKey="hora" tick={{ fontSize: 9, fill: C.sub }} tickLine={false}
+              axisLine={{ stroke: C.border }} interval={3} />
+            <YAxis tick={{ fontSize: 9, fill: C.sub }} axisLine={false} tickLine={false} />
+            <Tooltip {...TT} />
+            <Area type="monotone" dataKey="solar"  stroke={C.brand} strokeWidth={2}
+              fill="url(#gSolar)"  name="Solar" />
+            <Area type="monotone" dataKey="eolica" stroke={C.navy}  strokeWidth={2}
+              fill="url(#gEolica)" name="Eólica" />
+          </AreaChart>
+        </ResponsiveContainer>
+        {/* Legenda manual */}
+        <div style={{ display: 'flex', gap: 14, marginTop: 6, justifyContent: 'flex-end' }}>
+          {[['Solar', C.brand], ['Eólica', C.navy]].map(([l, c]) => (
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 20, height: 3, borderRadius: 2, backgroundColor: c }} />
+              <span style={{ fontSize: '0.7rem', color: C.sub }}>{l}</span>
+            </div>
+          ))}
         </div>
+        <Insight>
+          {`Gargalo atinge pico às ${peakHour.hora}, puxado pela fonte Solar. Prioridade para sistemas BESS neste intervalo.`}
+        </Insight>
+      </Card>
 
-        <div style={{ padding: '20px 24px 28px' }}>
-          {c.chart}
-
-          {/* métricas */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, margin: '18px 0' }}>
-            {c.metrics.map((m, i) => (
-              <div key={i} style={{ backgroundColor: 'var(--bg-soft-dark)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ fontSize: '0.73rem', color: 'var(--subtitle-color)' }}>{m.label}</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 600, color: m.color, marginTop: 4 }}>{m.value}</div>
+      {/* 2. Ranking Municípios Críticos */}
+      <Card>
+        <SectionTitle badge="Top 10">Municípios Críticos</SectionTitle>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {municipiosCriticos.map((d, i) => {
+            const pct = Math.round((d.curtailment / municipiosCriticos[0].curtailment) * 100);
+            return (
+              <div key={d.mun} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  fontSize: '0.65rem', fontWeight: 700, color: i < 3 ? C.brand : C.sub,
+                  width: 16, textAlign: 'right', flexShrink: 0,
+                }}>
+                  {i + 1}
+                </span>
+                <span style={{ fontSize: '0.72rem', color: C.text, width: 104, flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {d.mun}
+                </span>
+                <div style={{ flex: 1, height: 6, backgroundColor: C.bg, borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${pct}%`, height: '100%', borderRadius: 4,
+                    backgroundColor: i < 3 ? C.brand : C.teal,
+                    transition: 'width 0.6s ease',
+                  }} />
+                </div>
+                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: C.text, width: 32, textAlign: 'right', flexShrink: 0 }}>
+                  {d.curtailment}
+                </span>
               </div>
-            ))}
-          </div>
-
-          {/* resumo */}
-          <div style={{ backgroundColor: 'var(--bg-soft-dark)', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--title-color)', marginBottom: 6 }}>Análise</div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--subtitle-color)', lineHeight: 1.6 }}>{c.summary}</p>
-          </div>
+            );
+          })}
         </div>
-      </div>
+        <div style={{ marginTop: 6, fontSize: '0.65rem', color: C.sub, textAlign: 'right' }}>
+          curtailment_final (MWh)
+        </div>
+        <Insight>
+          Estes 10 municípios exigem prioridade nos próximos leilões de linhas de transmissão.
+        </Insight>
+      </Card>
+
+      {/* 3. Fluxo Inter-regional */}
+      <Card>
+        <SectionTitle badge="MWmed">Fluxo Inter-regional</SectionTitle>
+        <ResponsiveContainer width="100%" height={130}>
+          <BarChart data={fluxoData} layout="vertical" margin={{ top: 0, right: 30, left: 4, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 9, fill: C.sub }} axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="rota" tick={{ fontSize: 11, fill: C.text }} axisLine={false} tickLine={false} width={52} />
+            <Tooltip {...TT} />
+            <Bar dataKey="valor" radius={[0, 5, 5, 0]} name="MWmed">
+              {fluxoData.map((d, i) => <Cell key={i} fill={d.cor} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <Insight>
+          O subsistema Nordeste exportou 1.842 MWmed para o Sudeste — maior fluxo inter-regional do período.
+        </Insight>
+      </Card>
     </div>
   );
 }
 
-/* ── Componente principal ── */
-export default function SidebarRight({ selectedRegion = 'Pernambuco' }) {
-  const [expanded, setExpanded] = useState(null);
+// ── Painel Investidor ───────────────────────────────────────────────────────
+function PainelInvestidor({ selectedRegion }) {
+  const totalMwh = abundanciaData.reduce((s, d) => s + d.hidrica + d.eolica + d.solar, 0);
+  const capacidadeTotal = 480; // MW mock
+  const ociosidadePico  = 182; // MW mock
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* KPI topo */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+        {[
+          { label: 'Energia ociosa total', value: `${totalMwh} MWh`, color: C.brand },
+          { label: 'Capacidade instalada', value: `${capacidadeTotal} MW`, color: C.navy },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{
+            backgroundColor: '#fff', border: `1px solid ${C.border}`,
+            borderRadius: 10, padding: '10px 12px',
+          }}>
+            <div style={{ fontSize: '0.65rem', color: C.sub, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 700, color }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 1. Mapa de calor — já existe no mapa central, aqui mostramos o resumo */}
+      <Card>
+        <SectionTitle badge="Zona de Oportunidade">Energia Ociosa por Fonte</SectionTitle>
+        <ResponsiveContainer width="100%" height={140}>
+          <BarChart data={abundanciaData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
+            <XAxis dataKey="mes" tick={{ fontSize: 10, fill: C.sub }} tickLine={false} axisLine={{ stroke: C.border }} />
+            <YAxis tick={{ fontSize: 10, fill: C.sub }} axisLine={false} tickLine={false} />
+            <Tooltip {...TT} />
+            <Bar dataKey="solar"   stackId="a" fill={C.brand}  radius={[0,0,0,0]} name="Solar" />
+            <Bar dataKey="eolica"  stackId="a" fill={C.navy}   radius={[0,0,0,0]} name="Eólica" />
+            <Bar dataKey="hidrica" stackId="a" fill={C.teal}   radius={[4,4,0,0]} name="Hídrica" />
+          </BarChart>
+        </ResponsiveContainer>
+        {/* Legenda */}
+        <div style={{ display: 'flex', gap: 12, marginTop: 6, justifyContent: 'flex-end' }}>
+          {[['Solar', C.brand], ['Eólica', C.navy], ['Hídrica', C.teal]].map(([l, c]) => (
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c }} />
+              <span style={{ fontSize: '0.68rem', color: C.sub }}>{l}</span>
+            </div>
+          ))}
+        </div>
+        <Insight>
+          {`${selectedRegion} teve ${totalMwh} MWh de energia limpa não despachada no período, com maior participação Solar.`}
+        </Insight>
+      </Card>
+
+      {/* 2. Capacidade vs Ociosidade */}
+      <Card>
+        <SectionTitle>Capacidade vs. Ociosidade</SectionTitle>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <ResponsiveContainer width={110} height={110}>
+            <PieChart>
+              <Pie data={capacidadeData} cx="50%" cy="50%"
+                innerRadius={32} outerRadius={50} paddingAngle={3} dataKey="value"
+                startAngle={90} endAngle={-270}>
+                {capacidadeData.map((d, i) => <Cell key={i} fill={d.color} />)}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {capacidadeData.map((d) => (
+              <div key={d.name}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontSize: '0.72rem', color: C.sub }}>{d.name}</span>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: d.color }}>{d.value}%</span>
+                </div>
+                <div style={{ height: 5, backgroundColor: C.bg, borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: `${d.value}%`, height: '100%', backgroundColor: d.color, borderRadius: 4 }} />
+                </div>
+              </div>
+            ))}
+            <div style={{ marginTop: 4, padding: '6px 8px', backgroundColor: `${C.brand}10`, borderRadius: 7 }}>
+              <span style={{ fontSize: '0.68rem', color: C.brand, fontWeight: 600 }}>
+                Pico ocioso: {ociosidadePico} MW
+              </span>
+            </div>
+          </div>
+        </div>
+        <Insight>
+          {`A região possui ${capacidadeTotal} MW instalados. A ociosidade por curtailment atinge picos de ${ociosidadePico} MW — energia disponível para PPAs.`}
+        </Insight>
+      </Card>
+
+      {/* 3. CTA Investidor */}
+      <Card style={{ backgroundColor: C.navy, border: 'none' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff' }}>
+            Zona de Alta Oportunidade
+          </span>
+          <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>
+            As áreas em destaque no mapa representam municípios com energia ociosa recorrente — 
+            ideal para fábricas eletrointensivas, data centers ou produção de hidrogênio verde.
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            {['Data Centers', 'H₂ Verde', 'Indústria'].map((tag) => (
+              <span key={tag} style={{
+                fontSize: '0.65rem', fontWeight: 600, padding: '3px 9px',
+                borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', color: '#fff',
+              }}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ── Componente principal ────────────────────────────────────────────────────
+export default function SidebarRight({ selectedRegion = 'Brasil' }) {
+  const [tab, setTab] = useState('governo');
 
   return (
     <aside className="panel-right">
@@ -221,119 +375,39 @@ export default function SidebarRight({ selectedRegion = 'Pernambuco' }) {
         <div className="panel-header-row">
           <BarChart3 size={16} />
           <span className="panel-title">Análise Regional</span>
-          <p className="panel-subtitle">{selectedRegion}</p>
+          <p className="panel-subtitle" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {selectedRegion}
+          </p>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{
+        display: 'flex', gap: 4, padding: '8px 12px',
+        borderBottom: `1px solid ${C.border}`, backgroundColor: C.bg,
+      }}>
+        <TabBtn
+          active={tab === 'governo'}
+          onClick={() => setTab('governo')}
+          icon={Landmark}
+          label="Governo"
+        />
+        <TabBtn
+          active={tab === 'investidor'}
+          onClick={() => setTab('investidor')}
+          icon={TrendingUp}
+          label="Investidor"
+        />
       </div>
 
       <div className="panel-scroll">
         <div className="panel-content">
-
-          {/* Card 1 — Energia Não Utilizada */}
-          <InsightCard
-            cardId="energy-unused"
-            title="Energia Não Utilizada"
-            subtitle="Evolução mensal"
-            preview="Curtailment médio de 28% ao longo do semestre, com pico em fevereiro (32%). Aproximadamente 1.2 GWh mensais de energia não aproveitada."
-            onExpand={setExpanded}
-            onDownload={() => {}}
-            onShare={() => {}}
-          >
-            <ResponsiveContainer width="100%" height={140}>
-              <BarChart data={curtailmentData} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E4E7" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#6B6375' }} axisLine={{ stroke: '#E5E4E7' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#6B6375' }} axisLine={false} tickLine={false} />
-                <Tooltip {...tooltipStyle} cursor={{ fill: 'rgba(250,68,26,0.05)' }} />
-                <Bar dataKey="disponivel" fill="#E5E4E7" radius={[3,3,0,0]} name="Disponível" />
-                <Bar dataKey="utilizado" fill="#FA441A" radius={[3,3,0,0]} name="Utilizado" />
-              </BarChart>
-            </ResponsiveContainer>
-            <div className="insight-metric-box">
-              <div className="insight-metric-label">Curtailment médio</div>
-              <div className="insight-metric-value" style={{ color: '#DC2626' }}>28%</div>
-              <div className="insight-metric-desc">da energia disponível não aproveitada</div>
-            </div>
-          </InsightCard>
-
-          {/* Card 2 — Contexto Territorial */}
-          <InsightCard
-            cardId="territorial-context"
-            title="Contexto Territorial"
-            subtitle="Curtailment por tipo de cobertura"
-            preview="Maior incidência em áreas agrícolas (42%), seguido por pastagens (28%). Oportunidade para sistemas híbridos agro-solares."
-            onExpand={setExpanded}
-            onDownload={() => {}}
-            onShare={() => {}}
-          >
-            <ResponsiveContainer width="100%" height={130}>
-              <PieChart>
-                <Pie data={landCoverData} cx="50%" cy="50%" innerRadius={38} outerRadius={54}
-                  paddingAngle={3} dataKey="curtailment">
-                  {landCoverData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip {...tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {landCoverData.map((item) => (
-                <div key={item.name} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '4px 6px', borderRadius: 6,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: item.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.78rem', color: 'var(--title-color)' }}>{item.name}</span>
-                  </div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--title-color)' }}>{item.curtailment}%</span>
-                </div>
-              ))}
-            </div>
-          </InsightCard>
-
-          {/* Card 3 — Oportunidade Econômica */}
-          <InsightCard
-            cardId="economic-opportunity"
-            title="Oportunidade Econômica"
-            subtitle="Projeção de potencial"
-            preview="Retorno estimado de R$ 2,4M anuais com crescimento de 89% ao longo de 2026. Payback de 3.2 anos torna o investimento atrativo."
-            onExpand={setExpanded}
-            onDownload={() => {}}
-            onShare={() => {}}
-          >
-            <ResponsiveContainer width="100%" height={130}>
-              <AreaChart data={opportunityData} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradOpp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#FA441A" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#FA441A" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E4E7" vertical={false} />
-                <XAxis dataKey="quarter" tick={{ fontSize: 10, fill: '#6B6375' }} axisLine={{ stroke: '#E5E4E7' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#6B6375' }} axisLine={false} tickLine={false} />
-                <Tooltip {...tooltipStyle} />
-                <Area type="monotone" dataKey="potencial" stroke="#FA441A" strokeWidth={2}
-                  fill="url(#gradOpp)" name="Potencial" />
-              </AreaChart>
-            </ResponsiveContainer>
-            <div className="insight-metric-box">
-              <div className="insight-metric-label">Retorno estimado anual</div>
-              <div className="insight-metric-value" style={{ color: '#059669' }}>R$ 2,4M</div>
-              <div className="insight-metric-desc">com aproveitamento integral da energia</div>
-            </div>
-          </InsightCard>
-
+          {tab === 'governo'
+            ? <PainelGoverno selectedRegion={selectedRegion} />
+            : <PainelInvestidor selectedRegion={selectedRegion} />
+          }
         </div>
       </div>
-
-      {/* Modal expandido */}
-      {expanded && (
-        <ExpandedModal
-          cardId={expanded}
-          regionName={selectedRegion}
-          onClose={() => setExpanded(null)}
-        />
-      )}
     </aside>
   );
 }
