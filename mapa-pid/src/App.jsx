@@ -79,10 +79,14 @@ function App() {
 
       {/* ── Corpo 3 colunas ── */}
       <div className="app-body">
-        <SidebarLeft
-          onApplyFilters={handleApplyFilters}
-          onClearFilters={handleClearFilters}
-        />
+        {/* MODIFICADO: Overlay e container do menu lateral adicionados para mobile */}
+        {isMenuOpen && <div className="mobile-overlay" onClick={() => setIsMenuOpen(false)} />}
+        <div className={`sidebar-left-container ${isMenuOpen ? 'open' : ''}`}>
+          <SidebarLeft
+            onApplyFilters={handleApplyFilters}
+            onClearFilters={handleClearFilters}
+          />
+        </div>
 
         {/* Área central */}
         <div className="map-container">
