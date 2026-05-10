@@ -77,6 +77,19 @@ body, html, #root {
   gap: 12px;
 }
 
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #333;
+}
+
+.mobile-overlay {
+  display: none;
+}
+
 .logo-badge {
   display: flex;
   align-items: center;
@@ -547,4 +560,64 @@ h2 {
   margin-bottom: 0;
   font-size: inherit;
   font-weight: inherit;
+}
+
+@media (max-width: 900px) {
+  body {
+    overflow: auto; 
+  }
+
+  .app-wrapper {
+    height: auto;
+  }
+  
+  .app-header {
+    z-index: 300;
+  }
+  
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .app-body {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .map-container {
+    width: 100%;
+    height: calc(100vh - 80px);
+    flex: none; 
+  }
+
+  .sidebar-right-container {
+    width: 100%;
+    height: auto;
+    flex: none;
+    padding-bottom: 40px;
+  }
+
+  .sidebar-left-container {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 300px;
+    z-index: 200;
+    transition: left 0.3s ease-in-out;
+  }
+
+  .sidebar-left-container.open {
+    left: 0;
+  }
+
+  .mobile-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 150;
+  }
 }

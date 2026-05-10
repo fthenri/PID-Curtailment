@@ -18,6 +18,7 @@ const STATE_SIGLA = {
 
 function App() {
   const [localSelecionado, setLocalSelecionado] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // Adicionado estado para controle do menu mobile
   const mapRef = useRef(null);
 
   // Só é chamado ao clicar em "Aplicar Filtros"
@@ -33,6 +34,8 @@ function App() {
     } else {
       mapRef.current?.flyToBrazil();
     }
+    
+    setIsMenuOpen(false); // Fecha o menu no mobile ao aplicar os filtros
   }, []);
 
   const selectedRegion = localSelecionado
@@ -48,11 +51,23 @@ function App() {
           alt="Plataforma Interativa de Descarbonização"
           style={{ height: '80px', width: 'auto', display: 'block' }}
         />
+        
+        {/* Botão hambúrguer adicionado para mobile */}
+        <button className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          ☰
+        </button>
       </header>
 
       {/* ── Corpo 3 colunas ── */}
       <div className="app-body">
-        <SidebarLeft onApplyFilters={handleApplyFilters} />
+        
+        {/* Overlay para fechar o menu ao clicar fora no mobile */}
+        {isMenuOpen && <div className="mobile-overlay" onClick={() => setIsMenuOpen(false)}></div>}
+
+        {/* Container da SidebarLeft com classe dinâmica para abrir/fechar */}
+        <div className={`sidebar-left-container ${isMenuOpen ? 'open' : ''}`}>
+          <SidebarLeft onApplyFilters={handleApplyFilters} />
+        </div>
 
         {/* Área central */}
         <div className="map-container">
@@ -96,7 +111,10 @@ function App() {
           </div>
         </div>
 
-        <SidebarRight selectedRegion={selectedRegion} />
+        {/* Container extra para a SidebarRight para controlar fluxo mobile */}
+        <div className="sidebar-right-container">
+          <SidebarRight selectedRegion={selectedRegion} />
+        </div>
       </div>
     </div>
   );
