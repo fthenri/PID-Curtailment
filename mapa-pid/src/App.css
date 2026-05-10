@@ -228,6 +228,11 @@ body, html, #root {
   background-color: #E8ECEC;
 }
 
+.sidebar-right-container {
+  height: 100%; /* Limita a altura no desktop */
+  display: flex; /* Mantém a estrutura flexível interna */
+}
+
 /* ── Filtros ── */
 .filter-group {
   display: flex;
@@ -563,8 +568,9 @@ h2 {
 }
 
 @media (max-width: 900px) {
-  body {
+  body, html, #root { /* Adicionados html e #root para liberar scroll mobile */
     overflow: auto; 
+    height: auto; /* Remove a trava de 100vh da tela */
   }
 
   .app-wrapper {
@@ -599,6 +605,8 @@ h2 {
   }
 
   .sidebar-left-container {
+    height: 100%;
+    display: flex;
     position: fixed;
     top: 0;
     left: -100%;
