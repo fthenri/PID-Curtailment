@@ -143,6 +143,7 @@ body, html, #root {
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 .panel-left {
@@ -231,6 +232,7 @@ body, html, #root {
 .sidebar-right-container {
   height: 100%; /* Limita a altura no desktop */
   display: flex; /* Mantém a estrutura flexível interna */
+  min-height: 0;
 }
 
 /* ── Filtros ── */
@@ -613,6 +615,7 @@ h2 {
     width: 300px;
     z-index: 200;
     transition: left 0.3s ease-in-out;
+    min-height: 0;
   }
 
   .sidebar-left-container.open {
