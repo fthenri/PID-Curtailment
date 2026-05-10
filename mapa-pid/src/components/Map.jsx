@@ -124,8 +124,27 @@ export default function Map({ onMunicipioClick }) {
         paint: { 'line-color': '#9EAFB0', 'line-width': 0.5, 'line-opacity': 0.9 }
       });
 
-      // 5. Pontos de Curtailment
+      // 5. Pontos e Zonas de Curtailment
       map.current.addSource('curtailment', { type: 'geojson', data: '/mapa_curtailment.geojson' });
+      map.current.addSource('calor-municipios', { type: 'geojson', data: '/mapa_calor_municipios.geojson', generateId: true }); // Alteração: Nova fonte de dados para as Supply Zones
+      
+      map.current.addLayer({ // Alteração: Camada de mapa de calor usando o curtailment_final
+        id: 'calor-fill', // Alteração: ID da camada
+        type: 'fill', // Alteração: Tipo fill para preencher o polígono municipal
+        source: 'calor-municipios', // Alteração: Aponta para a nova fonte
+        paint: { // Alteração: Configuração visual
+          'fill-color': [ // Alteração: Interpola cores com base no volume de energia
+            'interpolate', ['linear'], ['get', 'curtailment_final'], // Alteração: Lê o dado gerado no Python
+            0, 'rgba(0,0,0,0)', // Alteração: Invisível se for zero
+            10, '#fde0dd', // Alteração: Tom mais claro para área de influência
+            50, '#fa9fb5', // Alteração: Média abundância
+            150, '#FA441A', // Alteração: Alta abundância (Cor da marca)
+            500, '#800026' // Alteração: Abundância extrema
+          ], // Alteração
+          'fill-opacity': 0.6 // Alteração: Transparência para permitir ver o mapa base
+        } // Alteração
+      }, 'municipios-layer'); // Alteração: Injeta abaixo das linhas de divisa municipal
+
       map.current.addLayer({
         id: 'curtailment-layer', type: 'circle', source: 'curtailment',
         paint: {
@@ -140,7 +159,7 @@ export default function Map({ onMunicipioClick }) {
       // ==========================================
       // C. LÓGICA DE INTERATIVIDADE
       // ==========================================
-      const interactiveLayers = ['municipios-fill', 'estados-fill', 'regioes-fill'];
+      const interactiveLayers = ['calor-fill', 'municipios-fill', 'estados-fill', 'regioes-fill']; // Alteração: 'calor-fill' adicionado aos layers clicáveis
       let hoveredState  = { id: null, source: null };
       let selectedState = { id: null, source: null };
 
@@ -180,14 +199,14 @@ export default function Map({ onMunicipioClick }) {
           map.current.setFeatureState({ source: f.source, id: f.id }, { selected: true });
 
           // Dispara callback apenas para municípios
-          if (f.source === 'municipios-ibge') {
+          if (f.source === 'municipios-ibge' || f.source === 'calor-municipios') { // Alteração: Aceita eventos da nova camada
             onMunicipioClick?.(props);
           }
 
           // Animação de câmera
           let targetZoom = 5;
           if (f.source === 'estados-ibge')    targetZoom = 6.5;
-          if (f.source === 'municipios-ibge') targetZoom = 9;
+          if (f.source === 'municipios-ibge' || f.source === 'calor-municipios') targetZoom = 9; // Alteração: Zoom ajustado se vier da nova camada
 
           map.current.flyTo({
             center: e.lngLat,
