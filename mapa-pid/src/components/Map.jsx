@@ -33,26 +33,26 @@ const STATE_BOUNDS = {
   // Centro-Oeste
   'Mato Grosso':         [[-61.6, -18.0], [-50.2,  -7.3]],
   'Mato Grosso do Sul':  [[-58.2, -24.1], [-50.9, -17.2]],
-  'Goiás':               [[-53.3, -19.5], [-45.9,  -12.4]],
-  'Distrito Federal':    [[-48.3, -16.1], [-47.3,  -15.5]],
+  'Goiás':               [[-53.3, -19.5], [-45.9, -12.4]],
+  'Distrito Federal':    [[-48.3, -16.1], [-47.3, -15.5]],
   // Sudeste
-  'Minas Gerais':        [[-51.0, -22.9], [-39.9,  -14.2]],
-  'Espírito Santo':      [[-41.9, -21.3], [-39.6,  -17.9]],
-  'Rio de Janeiro':      [[-44.9, -23.4], [-40.9,  -20.8]],
-  'São Paulo':           [[-53.1, -25.3], [-44.2,  -19.8]],
+  'Minas Gerais':        [[-51.0, -22.9], [-39.9, -14.2]],
+  'Espírito Santo':      [[-41.9, -21.3], [-39.6, -17.9]],
+  'Rio de Janeiro':      [[-44.9, -23.4], [-40.9, -20.8]],
+  'São Paulo':           [[-53.1, -25.3], [-44.2, -19.8]],
   // Sul
-  'Paraná':              [[-54.6, -26.7], [-48.0,  -22.5]],
-  'Santa Catarina':      [[-53.8, -29.4], [-48.4,  -25.9]],
-  'Rio Grande do Sul':   [[-57.6, -33.7], [-49.7,  -27.1]],
+  'Paraná':              [[-54.6, -26.7], [-48.0, -22.5]],
+  'Santa Catarina':      [[-53.8, -29.4], [-48.4, -25.9]],
+  'Rio Grande do Sul':   [[-57.6, -33.7], [-49.7, -27.1]],
 };
 
 // Bounding boxes por macrorregião
 const REGION_BOUNDS = {
-  'Norte':        [[-73.9,  -13.7], [-46.0,   5.3]],
-  'Nordeste':     [[-48.8,  -18.4], [-34.8,  -1.0]],
-  'Centro-Oeste': [[-61.6,  -24.1], [-45.9,  -7.3]],
-  'Sudeste':      [[-53.1,  -25.3], [-39.6,  -14.2]],
-  'Sul':          [[-57.6,  -33.7], [-48.0,  -22.5]],
+  'Norte':        [[-73.9, -13.7], [-46.0,  5.3]],
+  'Nordeste':     [[-48.8, -18.4], [-34.8, -1.0]],
+  'Centro-Oeste': [[-61.6, -24.1], [-45.9, -7.3]],
+  'Sudeste':      [[-53.1, -25.3], [-39.6, -14.2]],
+  'Sul':          [[-57.6, -33.7], [-48.0, -22.5]],
 };
 
 const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
@@ -60,6 +60,7 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
   const mapInstance  = useRef(null);
   const geojsonCache = useRef(null);
 
+  // ── Métodos de navegação expostos para o pai ──────────────────────────────
   useImperativeHandle(ref, () => ({
     flyToBrazil() {
       mapInstance.current?.flyTo({ center: [-55, -15], zoom: 4, essential: true, duration: 1200 });
@@ -103,58 +104,143 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
     });
 
     mapInstance.current.on('load', () => {
-      // Raster
+      // ── Máscara cinza sobre o mundo inteiro ──────────────────────────────
+      mapInstance.current.addSource('world-mask', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[-180, 90], [-180, -90], [180, -90], [180, 90], [-180, 90]]],
+          },
+        },
+      });
+      mapInstance.current.addLayer({
+        id: 'world-gray-layer', type: 'fill', source: 'world-mask',
+        paint: { 'fill-color': '#D1D1D1', 'fill-opacity': 1 },
+      });
+
+      // ── Satélite ─────────────────────────────────────────────────────────
       mapInstance.current.addSource('satellite-src', { type: 'raster', url: SATELLITE_URL, tileSize: 256 });
-      mapInstance.current.addLayer({ id: 'satellite-layer', type: 'raster', source: 'satellite-src', paint: { 'raster-opacity': 0.15 } });
+      mapInstance.current.addLayer({
+        id: 'satellite-layer', type: 'raster', source: 'satellite-src',
+        paint: { 'raster-opacity': 0.15 },
+      });
 
-      // Fontes vetoriais
-      mapInstance.current.addSource('pais-ibge',       { type: 'geojson', data: DATA_PAIS });
-      mapInstance.current.addSource('regioes-ibge',    { type: 'geojson', data: DATA_REGIOES,    generateId: true });
-      mapInstance.current.addSource('estados-ibge',    { type: 'geojson', data: DATA_ESTADOS,    generateId: true });
-      mapInstance.current.addSource('municipios-ibge', { type: 'geojson', data: DATA_MUNICIPIOS, generateId: true });
+      // ── Fontes vetoriais ──────────────────────────────────────────────────
+      mapInstance.current.addSource('pais-ibge',        { type: 'geojson', data: DATA_PAIS,        generateId: true });
+      mapInstance.current.addSource('regioes-ibge',     { type: 'geojson', data: DATA_REGIOES,     generateId: true });
+      mapInstance.current.addSource('estados-ibge',     { type: 'geojson', data: DATA_ESTADOS,     generateId: true });
+      mapInstance.current.addSource('municipios-ibge',  { type: 'geojson', data: DATA_MUNICIPIOS,  generateId: true });
+      mapInstance.current.addSource('curtailment',      { type: 'geojson', data: '/mapa_curtailment.geojson',      generateId: true });
+      mapInstance.current.addSource('calor-municipios', { type: 'geojson', data: '/mapa_calor_municipios.geojson', generateId: true });
 
-      // Cache do GeoJSON de municípios para busca por nome
+      // Cache do GeoJSON de municípios para busca por nome (flyToMunicipality)
       fetch(DATA_MUNICIPIOS).then(r => r.json()).then(data => { geojsonCache.current = data; });
 
-      // País
-      mapInstance.current.addLayer({ id: 'pais-layer', type: 'line', source: 'pais-ibge', maxzoom: 4,
-        paint: { 'line-color': '#9EAFB0', 'line-width': 2, 'line-opacity': 0.9 } });
+      // ── "Limpa" o cinza sobre o Brasil deixando-o claro ──────────────────
+      mapInstance.current.addLayer({
+        id: 'pais-highlight', type: 'fill', source: 'pais-ibge',
+        paint: { 'fill-color': '#FFFFFF', 'fill-opacity': 0.5 },
+      });
 
-      // Regiões
+      // ── Borda do país (zoom baixo) ────────────────────────────────────────
+      mapInstance.current.addLayer({
+        id: 'pais-layer', type: 'line', source: 'pais-ibge', maxzoom: 4,
+        paint: { 'line-color': '#9EAFB0', 'line-width': 2, 'line-opacity': 0.9 },
+      });
+
+      // ── Camadas de escurecimento ao selecionar ────────────────────────────
+      const addDimLayer = (id, source) => {
+        mapInstance.current.addLayer({
+          id: `${id}-dim`, type: 'fill', source,
+          paint: { 'fill-color': '#808080', 'fill-opacity': 0 },
+          filter: ['!=', ['id'], -1],
+        });
+      };
+      addDimLayer('regioes',    'regioes-ibge');
+      addDimLayer('estados',    'estados-ibge');
+      addDimLayer('municipios', 'municipios-ibge');
+
+      // ── Regiões ───────────────────────────────────────────────────────────
       mapInstance.current.addLayer({ id: 'regioes-fill', type: 'fill', source: 'regioes-ibge', maxzoom: 5, paint: { 'fill-color': 'rgba(0,0,0,0)' } });
-      mapInstance.current.addLayer({ id: 'regioes-highlight', type: 'fill', source: 'regioes-ibge', maxzoom: 5,
-        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.1, 0] } });
-      mapInstance.current.addLayer({ id: 'regioes-layer', type: 'line', source: 'regioes-ibge', maxzoom: 5,
-        paint: { 'line-color': '#BECCCC', 'line-width': 1.2, 'line-opacity': 0.7 } });
+      mapInstance.current.addLayer({
+        id: 'regioes-highlight', type: 'fill', source: 'regioes-ibge', maxzoom: 5,
+        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.1, 0] },
+      });
+      mapInstance.current.addLayer({
+        id: 'regioes-layer', type: 'line', source: 'regioes-ibge', maxzoom: 5,
+        paint: { 'line-color': '#BECCCC', 'line-width': 1.2, 'line-opacity': 0.7 },
+      });
 
-      // Estados
+      // ── Estados ───────────────────────────────────────────────────────────
       mapInstance.current.addLayer({ id: 'estados-fill', type: 'fill', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5, paint: { 'fill-color': 'rgba(0,0,0,0)' } });
-      mapInstance.current.addLayer({ id: 'estados-highlight', type: 'fill', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
-        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.15, 0] } });
-      mapInstance.current.addLayer({ id: 'estados-layer', type: 'line', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
-        paint: { 'line-color': '#03254D', 'line-width': 1.2, 'line-opacity': 0.55 } });
+      mapInstance.current.addLayer({
+        id: 'estados-highlight', type: 'fill', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
+        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.15, 0] },
+      });
+      mapInstance.current.addLayer({
+        id: 'estados-layer', type: 'line', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
+        paint: { 'line-color': '#03254D', 'line-width': 1.2, 'line-opacity': 0.55 },
+      });
 
-      // Municípios
+      // ── Municípios ────────────────────────────────────────────────────────
       mapInstance.current.addLayer({ id: 'municipios-fill', type: 'fill', source: 'municipios-ibge', minzoom: 7.5, paint: { 'fill-color': 'rgba(0,0,0,0)' } });
-      mapInstance.current.addLayer({ id: 'municipios-highlight', type: 'fill', source: 'municipios-ibge', minzoom: 7.5,
-        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.18, 0] } });
-      mapInstance.current.addLayer({ id: 'municipios-selected', type: 'fill', source: 'municipios-ibge', minzoom: 7.5,
-        paint: { 'fill-color': '#FA441A', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.25, 0] } });
-      mapInstance.current.addLayer({ id: 'municipios-layer', type: 'line', source: 'municipios-ibge', minzoom: 7.5,
-        paint: { 'line-color': '#9EAFB0', 'line-width': 0.5, 'line-opacity': 0.9 } });
+      mapInstance.current.addLayer({
+        id: 'municipios-highlight', type: 'fill', source: 'municipios-ibge', minzoom: 7.5,
+        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.18, 0] },
+      });
+      mapInstance.current.addLayer({
+        id: 'municipios-selected', type: 'fill', source: 'municipios-ibge', minzoom: 7.5,
+        paint: { 'fill-color': '#FA441A', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.25, 0] },
+      });
+      mapInstance.current.addLayer({
+        id: 'municipios-layer', type: 'line', source: 'municipios-ibge', minzoom: 7.5,
+        paint: { 'line-color': '#9EAFB0', 'line-width': 0.5, 'line-opacity': 0.9 },
+      });
 
-      // Curtailment
-      mapInstance.current.addSource('curtailment', { type: 'geojson', data: '/mapa_curtailment.geojson' });
-      mapInstance.current.addLayer({ id: 'curtailment-layer', type: 'circle', source: 'curtailment',
-        paint: { 'circle-radius': 7, 'circle-color': '#FA441A', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#ffffff', 'circle-opacity': 0.9 } });
+      // ── Camada de calor (curtailment por município) ───────────────────────
+      mapInstance.current.addLayer({
+        id: 'calor-fill', type: 'fill', source: 'calor-municipios',
+        paint: {
+          'fill-color': [
+            'interpolate', ['linear'], ['get', 'curtailment_final'],
+            0,   'rgba(0,0,0,0)',
+            10,  '#fde0dd',
+            50,  '#fa9fb5',
+            150, '#FA441A',
+            500, '#800026',
+          ],
+          'fill-opacity': 0.6,
+        },
+      }, 'municipios-layer'); // inserida abaixo das linhas de município
 
-      // Interatividade
-      const interactiveLayers = ['municipios-fill', 'estados-fill', 'regioes-fill'];
+      // ── Pontos de curtailment ─────────────────────────────────────────────
+      mapInstance.current.addLayer({
+        id: 'curtailment-layer', type: 'circle', source: 'curtailment',
+        paint: {
+          'circle-radius': 7,
+          'circle-color': '#FA441A',
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 0.9,
+        },
+      });
+
+      // ── Interatividade ────────────────────────────────────────────────────
       let hoveredState  = { id: null, source: null };
       let selectedState = { id: null, source: null };
 
+      // Hover: usa camada ativa conforme zoom (mais preciso que doc1)
       mapInstance.current.on('mousemove', (e) => {
-        const features = mapInstance.current.queryRenderedFeatures(e.point, { layers: interactiveLayers });
+        const zoom = mapInstance.current.getZoom();
+        const activeLayers =
+          zoom < 5   ? ['regioes-fill'] :
+          zoom < 7.5 ? ['estados-fill'] :
+                       ['municipios-fill'];
+
+        const features = mapInstance.current.queryRenderedFeatures(e.point, { layers: activeLayers });
+
         if (features.length > 0) {
           mapInstance.current.getCanvas().style.cursor = 'pointer';
           const f = features[0];
@@ -170,27 +256,59 @@ const Map = forwardRef(function Map({ onMunicipioClick }, ref) {
         }
       });
 
+      // Click: seleciona feature, escurece as demais, voa para ela
       mapInstance.current.on('click', (e) => {
-        const features = mapInstance.current.queryRenderedFeatures(e.point, { layers: interactiveLayers });
+        const zoom = mapInstance.current.getZoom();
+        const activeLayers =
+          zoom < 5   ? ['regioes-fill'] :
+          zoom < 7.5 ? ['estados-fill'] :
+                       ['municipios-fill', 'calor-fill'];
+
+        const features = mapInstance.current.queryRenderedFeatures(e.point, { layers: activeLayers });
+
+        // Reseta escurecimento em todas as camadas dim
+        ['regioes-dim', 'estados-dim', 'municipios-dim'].forEach(layer => {
+          mapInstance.current.setPaintProperty(layer, 'fill-opacity', 0);
+        });
+
         if (features.length > 0) {
           const f = features[0];
-          const props = f.properties;
+
+          // Desmarca seleção anterior
           if (selectedState.id !== null)
             mapInstance.current.setFeatureState({ source: selectedState.source, id: selectedState.id }, { selected: false });
+
+          // Marca nova seleção
           selectedState = { id: f.id, source: f.source };
           mapInstance.current.setFeatureState({ source: f.source, id: f.id }, { selected: true });
-          if (f.source === 'municipios-ibge') onMunicipioClick?.(props);
-          let targetZoom = 5;
-          if (f.source === 'estados-ibge')    targetZoom = 6.5;
-          if (f.source === 'municipios-ibge') targetZoom = 9;
+
+          // Escurece as outras features da mesma camada
+          const dimLayer =
+            f.source.includes('regioes')    ? 'regioes-dim' :
+            f.source.includes('estados')    ? 'estados-dim' :
+                                              'municipios-dim';
+          mapInstance.current.setFilter(dimLayer, ['!=', ['id'], f.id]);
+          mapInstance.current.setPaintProperty(dimLayer, 'fill-opacity', 0.5);
+
+          // Callback para município (inclui clique no calor)
+          if (f.source.includes('municipios') || f.source === 'calor-municipios')
+            onMunicipioClick?.(f.properties);
+
+          // Zoom alvo por nível
+          const targetZoom =
+            f.source.includes('regioes') ? 5.2 :
+            f.source.includes('estados') ? 6.8 :
+                                           9.5;
           mapInstance.current.flyTo({ center: e.lngLat, zoom: targetZoom, essential: true, speed: 1.2 });
+        } else {
+          selectedState = { id: null, source: null };
         }
       });
     });
   }, [onMunicipioClick]);
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', backgroundColor: '#D1D1D1' }}>
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
     </div>
   );
