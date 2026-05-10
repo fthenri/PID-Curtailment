@@ -1,4 +1,3 @@
-// src/components/Map.jsx
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -25,18 +24,41 @@ export default function Map({ onMunicipioClick }) {
     });
 
     map.current.on('load', () => {
+      // Nova: Fonte global para cobrir o mundo todo
+      map.current.addSource('world-mask', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[-180, 90], [-180, -90], [180, -90], [180, 90], [-180, 90]]]
+          }
+        }
+      });
+
       map.current.addSource('satellite-src', { type: 'raster', url: SATELLITE_URL, tileSize: 256 });
-      
-      map.current.addSource('pais-ibge',      { type: 'geojson', data: DATA_PAIS, generateId: true }); // Adicionado: generateId para suportar setFeatureState
-      map.current.addSource('regioes-ibge',    { type: 'geojson', data: DATA_REGIOES, generateId: true }); // Alterado: promoteId substituído por generateId
-      map.current.addSource('estados-ibge',    { type: 'geojson', data: DATA_ESTADOS, generateId: true }); // Alterado: promoteId substituído por generateId
-      map.current.addSource('municipios-ibge', { type: 'geojson', data: DATA_MUNICIPIOS, generateId: true }); // Alterado: promoteId substituído por generateId
-      map.current.addSource('curtailment',     { type: 'geojson', data: '/mapa_curtailment.geojson', generateId: true }); // Adicionado: generateId
-      map.current.addSource('calor-municipios', { type: 'geojson', data: '/mapa_calor_municipios.geojson', generateId: true }); // Alterado: promoteId substituído por generateId
+      map.current.addSource('pais-ibge',      { type: 'geojson', data: DATA_PAIS, generateId: true });
+      map.current.addSource('regioes-ibge',    { type: 'geojson', data: DATA_REGIOES, generateId: true });
+      map.current.addSource('estados-ibge',    { type: 'geojson', data: DATA_ESTADOS, generateId: true });
+      map.current.addSource('municipios-ibge', { type: 'geojson', data: DATA_MUNICIPIOS, generateId: true });
+      map.current.addSource('curtailment',     { type: 'geojson', data: '/mapa_curtailment.geojson', generateId: true });
+      map.current.addSource('calor-municipios', { type: 'geojson', data: '/mapa_calor_municipios.geojson', generateId: true });
+
+      // Nova: Camada que pinta o mundo de cinza por cima do estilo base
+      map.current.addLayer({
+        id: 'world-gray-layer', type: 'fill', source: 'world-mask',
+        paint: { 'fill-color': '#D1D1D1', 'fill-opacity': 1 }
+      });
 
       map.current.addLayer({
         id: 'satellite-layer', type: 'raster', source: 'satellite-src',
         paint: { 'raster-opacity': 0.15 }
+      });
+
+      // Nova: Camada que "limpa" o cinza apenas no Brasil, deixando-o branco/claro
+      map.current.addLayer({
+        id: 'pais-highlight', type: 'fill', source: 'pais-ibge',
+        paint: { 'fill-color': '#FFFFFF', 'fill-opacity': 0.5 }
       });
 
       map.current.addLayer({
@@ -45,14 +67,22 @@ export default function Map({ onMunicipioClick }) {
         paint: { 'line-color': '#9EAFB0', 'line-width': 2, 'line-opacity': 0.9 }
       });
 
+      const addDimLayer = (id, source) => {
+        map.current.addLayer({
+          id: `${id}-dim`, type: 'fill', source: source,
+          paint: { 'fill-color': '#808080', 'fill-opacity': 0 }, // Alterado: Sem min/max zoom para evitar piscadas
+          filter: ['!=', ['id'], -1]
+        });
+      };
+
+      addDimLayer('regioes', 'regioes-ibge');
+      addDimLayer('estados', 'estados-ibge');
+      addDimLayer('municipios', 'municipios-ibge');
+
       map.current.addLayer({ id: 'regioes-fill', type: 'fill', source: 'regioes-ibge', maxzoom: 5, paint: { 'fill-color': 'rgba(0,0,0,0)' } });
       map.current.addLayer({
         id: 'regioes-highlight', type: 'fill', source: 'regioes-ibge', maxzoom: 5,
         paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.1, 0] }
-      });
-      map.current.addLayer({
-        id: 'regioes-selected', type: 'fill', source: 'regioes-ibge', maxzoom: 5,
-        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.2, 0] }
       });
       map.current.addLayer({
         id: 'regioes-layer', type: 'line', source: 'regioes-ibge', maxzoom: 5,
@@ -63,10 +93,6 @@ export default function Map({ onMunicipioClick }) {
       map.current.addLayer({
         id: 'estados-highlight', type: 'fill', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
         paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.15, 0] }
-      });
-      map.current.addLayer({
-        id: 'estados-selected', type: 'fill', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
-        paint: { 'fill-color': '#03254D', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.2, 0] }
       });
       map.current.addLayer({
         id: 'estados-layer', type: 'line', source: 'estados-ibge', minzoom: 5, maxzoom: 7.5,
@@ -105,11 +131,7 @@ export default function Map({ onMunicipioClick }) {
 
       map.current.on('mousemove', (e) => {
         const zoom = map.current.getZoom();
-        let activeLayers = [];
-        if (zoom < 5) activeLayers = ['regioes-fill'];
-        else if (zoom < 7.5) activeLayers = ['estados-fill'];
-        else activeLayers = ['municipios-fill'];
-
+        let activeLayers = zoom < 5 ? ['regioes-fill'] : (zoom < 7.5 ? ['estados-fill'] : ['municipios-fill']);
         const features = map.current.queryRenderedFeatures(e.point, { layers: activeLayers });
 
         if (features.length > 0) {
@@ -127,12 +149,12 @@ export default function Map({ onMunicipioClick }) {
 
       map.current.on('click', (e) => {
         const zoom = map.current.getZoom();
-        let activeLayers = [];
-        if (zoom < 5) activeLayers = ['regioes-fill'];
-        else if (zoom < 7.5) activeLayers = ['estados-fill'];
-        else activeLayers = ['municipios-fill', 'calor-fill'];
-
+        let activeLayers = zoom < 5 ? ['regioes-fill'] : (zoom < 7.5 ? ['estados-fill'] : ['municipios-fill', 'calor-fill']);
         const features = map.current.queryRenderedFeatures(e.point, { layers: activeLayers });
+
+        ['regioes-dim', 'estados-dim', 'municipios-dim'].forEach(layer => {
+          map.current.setPaintProperty(layer, 'fill-opacity', 0);
+        });
 
         if (features.length > 0) {
           const f = features[0];
@@ -140,22 +162,23 @@ export default function Map({ onMunicipioClick }) {
           selectedState = { id: f.id, source: f.source };
           map.current.setFeatureState({ source: f.source, id: f.id }, { selected: true });
 
-          if (f.source === 'municipios-ibge' || f.source === 'calor-municipios') {
-            onMunicipioClick?.(f.properties);
-          }
+          const dimLayer = f.source.includes('regioes') ? 'regioes-dim' : (f.source.includes('estados') ? 'estados-dim' : 'municipios-dim');
+          map.current.setFilter(dimLayer, ['!=', ['id'], f.id]);
+          map.current.setPaintProperty(dimLayer, 'fill-opacity', 0.5);
 
-          let targetZoom = 5.2;
-          if (f.source === 'estados-ibge') targetZoom = 6.8;
-          if (f.source === 'municipios-ibge' || f.source === 'calor-municipios') targetZoom = 9.5;
+          if (f.source.includes('municipios') || f.source.includes('calor')) onMunicipioClick?.(f.properties);
 
+          let targetZoom = f.source.includes('estados') ? 6.8 : (f.source.includes('regioes') ? 5.2 : 9.5);
           map.current.flyTo({ center: e.lngLat, zoom: targetZoom, essential: true, speed: 1.2 });
+        } else {
+          selectedState = { id: null, source: null };
         }
       });
     });
   }, [onMunicipioClick]);
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', backgroundColor: '#D1D1D1' }}>
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
     </div>
   );
