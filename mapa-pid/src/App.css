@@ -1,72 +1,551 @@
 /* src/App.css */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
 :root {
-  --panel-bg: rgba(20, 24, 28, 0.93); /* Escuro transparente */
-  --panel-border: #33393f;
-  --text-main: #f0f3f5;
-  --accent-color: #2e86de;
+  /* Cores principais — extraídas do Figma */
+  --brand-primary: #FA441A;       /* laranja-vermelho do botão e accent */
+  --brand-dark: #03254D;          /* azul escuro do header e títulos */
+
+  /* Backgrounds */
+  --background: #F5F5F5;          /* fundo geral da página */
+  --panel-bg: #FFFFFF;            /* fundo dos painéis */
+  --bg-soft-dark: #F5F5F5;        /* fundo suave para cards internos */
+
+  /* Bordas */
+  --border: #E5E4E7;
+
+  /* Textos */
+  --title-color: #08060D;         /* títulos e textos principais */
+  --subtitle-color: #6B6375;      /* textos secundários/labels */
+  --text-main: #08060D;
+
+  /* Visualização */
+  --viz-low: #F5F749;
+  --viz-medium: #F89069;
+  --viz-high: #B5446E;
+  --viz-critical: #550C18;
+  --viz-vegetation: #4D7C0F;
+  --viz-opportunity: #059669;
+
+  /* Mapa — alinhado ao tema claro */
+  --map-line-country: #BECCCC;
+  --map-line-state: #9EAFB0;
+  --map-line-muni: #C8D5D6;
+  --map-hover: rgba(3, 37, 77, 0.18);
+  --map-click: rgba(250, 68, 26, 0.18);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body, html, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background-color: #000;
-  font-family: 'Segoe UI', sans-serif;
+  background-color: var(--background);
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  color: var(--title-color);
 }
 
-/* O layout agora é relativo para permitir que os filhos flutuem */
-.layout {
-  position: relative;
+/* ── Layout principal ── */
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
 }
 
-/* O MAPA É O FUNDO TOTAL - OCUPA 100% DA TELA */
+/* ── Header ── */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background-color: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.app-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--brand-dark);
+  border-radius: 999px;
+  padding: 8px 18px 8px 8px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background-color: var(--brand-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: #fff;
+}
+
+.logo-text {
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+/* ── Corpo com 3 colunas ── */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Painéis laterais ── */
+.panel-left,
+.panel-right {
+  background-color: var(--panel-bg);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.panel-left {
+  width: 280px;
+  border-right: 1px solid var(--border);
+}
+
+.panel-right {
+  width: 320px;
+  border-left: 1px solid var(--border);
+}
+
+/* Cabeçalhos dos painéis */
+.panel-header {
+  padding: 20px 22px 16px;
+  background-color: var(--bg-soft-dark);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.panel-header-row svg {
+  color: var(--title-color);
+  width: 16px;
+  height: 16px;
+}
+
+.panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--title-color);
+  letter-spacing: -0.01em;
+}
+
+.panel-subtitle {
+  font-size: 0.82rem;
+  color: var(--subtitle-color);
+  margin-top: 2px;
+}
+
+/* Scroll interno dos painéis */
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.panel-content {
+  padding: 16px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Rodapé dos painéis */
+.panel-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Área central do mapa ── */
 .map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #E8ECEC;
+}
+
+/* ── Filtros ── */
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-label {
+  font-size: 0.8rem;
+  color: var(--subtitle-color);
+  font-weight: 500;
+}
+
+.filter-select-wrapper {
+  position: relative;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 8px 32px 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--title-color);
+  background-color: var(--bg-soft-dark);
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.filter-select:hover:not(:disabled) {
+  border-color: var(--brand-primary);
+}
+
+.filter-select:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(250, 68, 26, 0.15);
+}
+
+.filter-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.filter-select-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--subtitle-color);
+  width: 14px;
+  height: 14px;
+}
+
+/* Botões do painel esquerdo */
+.btn-primary {
+  width: 100%;
+  padding: 11px 16px;
+  background-color: var(--brand-primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn-primary:hover {
+  opacity: 0.88;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-ghost {
+  width: 100%;
+  padding: 9px 16px;
+  background: transparent;
+  border: none;
+  font-size: 0.86rem;
+  color: var(--subtitle-color);
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: color 0.15s;
+  margin-top: 8px;
+}
+
+.btn-ghost:hover {
+  color: var(--title-color);
+}
+
+/* ── Insight Cards (painel direito) ── */
+.insight-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s;
+}
+
+.insight-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.insight-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.insight-card-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.insight-card-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--title-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insight-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--subtitle-color);
+  margin-top: 1px;
+}
+
+.insight-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.icon-btn {
+  padding: 5px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--subtitle-color);
+  display: flex;
+  align-items: center;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
+  background-color: var(--bg-soft-dark);
+  color: var(--brand-primary);
+}
+
+.insight-preview {
+  background-color: var(--bg-soft-dark);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.insight-preview p {
+  font-size: 0.78rem;
+  color: var(--subtitle-color);
+  line-height: 1.5;
+}
+
+.insight-preview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--brand-dark);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'DM Sans', sans-serif;
+  transition: text-decoration 0.1s;
+}
+
+.insight-preview-link:hover {
+  text-decoration: underline;
+}
+
+.insight-metric-box {
+  background-color: var(--bg-soft-dark);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+
+.insight-metric-label {
+  font-size: 0.75rem;
+  color: var(--subtitle-color);
+}
+
+.insight-metric-value {
+  font-size: 1.6rem;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.insight-metric-desc {
+  font-size: 0.75rem;
+  color: var(--subtitle-color);
+  margin-top: 2px;
+}
+
+/* Legenda do mapa */
+.map-legend {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.map-legend-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--subtitle-color);
+  margin-right: 4px;
+}
+
+.map-legend-items {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.map-legend-label {
+  font-size: 0.78rem;
+  color: var(--title-color);
+}
+
+/* Badge região no mapa */
+.map-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background-color: var(--border);
+  color: var(--title-color);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 999px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Tooltip do município */
+.map-tooltip {
+  position: absolute;
+  bottom: 70px;
+  left: 20px;
+  background-color: rgba(3, 37, 77, 0.95);
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+
+/* Cabeçalho interno do mapa */
+.map-header {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1; /* Fica na camada de baixo */
-}
-
-/* PAINÉIS FLUTUANTES NOS EXTREMOS */
-.panel-left, .panel-right {
-  position: absolute;
-  top: 15px;    /* Margem do topo */
-  bottom: 15px; /* Margem do fundo */
-  width: 350px; /* Largura fixa para desktop */
-  background-color: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  z-index: 10;  /* Fica na camada de cima */
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  right: 0;
   display: flex;
-  flex-direction: column;
-  color: var(--text-main);
-  backdrop-filter: blur(10px); /* Efeito de desfoque (Blur) do MapBiomas */
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background-color: #fff;
+  border-bottom: 1px solid var(--border);
+  z-index: 5;
+  pointer-events: none;
 }
 
-/* Cola na extremidade esquerda */
-.panel-left {
-  left: 15px;
+.map-header-label {
+  font-size: 0.75rem;
+  color: var(--subtitle-color);
 }
 
-/* Cola na extremidade direita */
-.panel-right {
-  right: 15px;
-}
-
-h2 {
-  font-size: 1rem;
+.map-header-title {
+  font-size: 0.9rem;
   font-weight: 600;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--panel-border);
-  padding-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--title-color);
+  margin-left: 6px;
+}
+
+/* ── h2 global reset (evitar conflito com index.css) ── */
+h2 {
+  text-transform: none;
+  letter-spacing: normal;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  font-size: inherit;
+  font-weight: inherit;
 }
