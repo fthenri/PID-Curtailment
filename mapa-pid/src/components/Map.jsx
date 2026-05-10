@@ -9,9 +9,8 @@ const DATA_ESTADOS   = 'https://api.maptiler.com/data/019e0fbb-aeeb-7506-9d9d-90
 const DATA_REGIOES   = 'https://api.maptiler.com/data/019e0fbf-d956-78fe-8eff-223f45be72a3/features.json?key=LMVMEPHIf7vzxWZQP1md';
 const DATA_PAIS      = 'https://api.maptiler.com/data/019e0fc0-986d-74ac-8a66-ba3a3bef381f/features.json?key=OM8hPVpAd6P8jEpCnFmc';
 
-// --- 2. LINKS DE CONTEXTO AMBIENTAL (RASTER/WMS) ---
+// --- 2. LINKS DE CONTEXTO AMBIENTAL (RASTER) ---
 const SATELLITE_URL = 'https://api.maptiler.com/tiles/satellite/tiles.json?key=j8UzJW3QV4tjV8YFy0i7';
-const MAPBIOMAS_WMS = 'https://geoserver.mapbiomas.org/geoserver/wms?bbox={bbox-epsg-3857}&format=image/png&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&transparent=true&width=256&height=256&layers=mapbiomas_colecao90_cobertura_vegetal';
 
 // Estilo base claro (Alinhado ao Figma)
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
@@ -36,25 +35,12 @@ export default function Map({ onMunicipioClick }) {
       // A. FONTES E CAMADAS RASTER (FUNDO DO MAPA)
       // ==========================================
       map.current.addSource('satellite-src', { type: 'raster', url: SATELLITE_URL, tileSize: 256 });
-      map.current.addSource('mapbiomas-src', { 
-        type: 'raster', 
-        tiles: [MAPBIOMAS_WMS], 
-        tileSize: 256 
-      });
 
       map.current.addLayer({
         id: 'satellite-layer',
         type: 'raster',
         source: 'satellite-src',
         paint: { 'raster-opacity': 0.15 } // Opacidade bem reduzida para não brigar com o tema claro
-      });
-
-      map.current.addLayer({
-        id: 'mapbiomas-layer',
-        type: 'raster',
-        source: 'mapbiomas-src',
-        paint: { 'raster-opacity': 0.3 },
-        layout: { visibility: 'visible' }
       });
 
       // ==========================================
