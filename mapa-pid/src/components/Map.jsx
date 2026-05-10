@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
+// Constantes atualizadas com os novos links de DATA (features.json)
 const DATA_MUNICIPIOS = 'https://api.maptiler.com/data/019e0f97-410a-7425-96f0-12a3e6d892af/features.json?key=j8UzJW3QV4tjV8YFy0i7';
-const TILEJSON_ESTADOS = 'https://api.maptiler.com/tiles/019e0f1e-cf42-7533-a45b-a952a17e2027/tiles.json?key=2iSGf08Ld0l2ytr6rvRV';
-const TILEJSON_REGIOES = 'https://api.maptiler.com/tiles/019e0f21-35ae-7b4c-8da4-18a34321f800/tiles.json?key=LMVMEPHIf7vzxWZQP1md';
-const TILEJSON_PAIS = 'https://api.maptiler.com/tiles/019e0f22-4f2f-7e49-a0cd-2fdb061be3c8/tiles.json?key=OM8hPVpAd6P8jEpCnFmc';
+const DATA_ESTADOS = 'https://api.maptiler.com/data/019e0fbb-aeeb-7506-9d9d-90eabc379d25/features.json?key=2iSGf08Ld0l2ytr6rvRV';
+const DATA_REGIOES = 'https://api.maptiler.com/data/019e0fbf-d956-78fe-8eff-223f45be72a3/features.json?key=LMVMEPHIf7vzxWZQP1md';
+const DATA_PAIS = 'https://api.maptiler.com/data/019e0fc0-986d-74ac-8a66-ba3a3bef381f/features.json?key=OM8hPVpAd6P8jEpCnFmc';
 
 export default function Map() {
   const mapContainer = useRef(null);
@@ -23,26 +24,46 @@ export default function Map() {
     });
 
     map.current.on('load', () => {
-      map.current.addSource('pais-ibge', { type: 'vector', url: TILEJSON_PAIS });
-      map.current.addSource('regioes-ibge', { type: 'vector', url: TILEJSON_REGIOES });
-      map.current.addSource('estados-ibge', { type: 'vector', url: TILEJSON_ESTADOS });
+      // 1. Configuração das Fontes (Todas como GeoJSON para preservar atributos)
+      map.current.addSource('pais-ibge', { type: 'geojson', data: DATA_PAIS });
+      map.current.addSource('regioes-ibge', { type: 'geojson', data: DATA_REGIOES });
+      map.current.addSource('estados-ibge', { type: 'geojson', data: DATA_ESTADOS });
       
       map.current.addSource('municipios-ibge', { 
         type: 'geojson', 
         data: DATA_MUNICIPIOS,
-        generateId: true // Gera ID único para cada município para otimizar o hover
+        generateId: true // Gera IDs únicos automaticamente para o efeito de hover instantâneo
       });
 
+      // 2. Camada do País
+      map.current.addLayer({
+        id: 'pais-layer',
+        type: 'line',
+        source: 'pais-ibge',
+        maxzoom: 4,
+        paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.8 }
+      });
+
+      // 3. Camada de Macro Regiões
+      map.current.addLayer({
+        id: 'regioes-layer',
+        type: 'line',
+        source: 'regioes-ibge',
+        maxzoom: 5,
+        paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.4 }
+      });
+
+      // 4. Camada de Estados
       map.current.addLayer({
         id: 'estados-layer',
         type: 'line',
         source: 'estados-ibge',
-        'source-layer': 'BR_UF_2025',
         minzoom: 5,
         maxzoom: 7.5,
         paint: { 'line-color': '#39FF14', 'line-width': 1.2, 'line-opacity': 0.7 }
       });
 
+      // 5. Camadas de Municípios (Com regras de zoom para performance)
       map.current.addLayer({
         id: 'municipios-fill',
         type: 'fill',
@@ -61,8 +82,8 @@ export default function Map() {
           'fill-opacity': [
             'case',
             ['boolean', ['feature-state', 'hover'], false],
-            0.3, // Opacidade quando o estado for 'hover'
-            0    // Opacidade padrão
+            0.3, // Brilho ao passar o mouse
+            0    // Transparente por padrão
           ]
         }
       });
@@ -75,6 +96,7 @@ export default function Map() {
         paint: { 'line-color': '#39FF14', 'line-width': 0.6, 'line-opacity': 0.8 }
       });
 
+      // Camada de Pontos de Curtailment
       map.current.addSource('curtailment', {
         type: 'geojson',
         data: '/mapa_curtailment.geojson'
@@ -92,6 +114,7 @@ export default function Map() {
         }
       });
 
+      // --- Lógica de Interatividade ---
       let hoveredStateId = null;
 
       map.current.on('mousemove', 'municipios-fill', (e) => {
@@ -101,14 +124,14 @@ export default function Map() {
           if (hoveredStateId !== null) {
             map.current.setFeatureState(
               { source: 'municipios-ibge', id: hoveredStateId },
-              { hover: false } // Limpa o estado anterior
+              { hover: false }
             );
           }
           
           hoveredStateId = e.features[0].id;
           map.current.setFeatureState(
             { source: 'municipios-ibge', id: hoveredStateId },
-            { hover: true } // Ativa o novo estado de hover
+            { hover: true }
           );
         }
       });
