@@ -569,10 +569,38 @@ h2 {
   font-weight: inherit;
 }
 
+/* MODIFICADO: A regra padrão (esconder) deve vir ANTES do celular */
+.mobile-scroll-btn {
+  display: none;
+}
+
 @media (max-width: 900px) {
-  body, html, #root { /* Adicionados html e #root para liberar scroll mobile */
+  body, html, #root { 
     overflow: auto; 
-    height: auto; /* Remove a trava de 100vh da tela */
+    height: auto; 
+  }
+
+  .mobile-scroll-btn {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    bottom: 90px; 
+    right: 16px;
+    background-color: #03254D;
+    color: #ffffff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-weight: 600;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    z-index: 1000;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .mobile-scroll-btn:active {
+    background-color: #FA441A;
   }
 
   .app-wrapper {

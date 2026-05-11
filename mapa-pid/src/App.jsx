@@ -18,8 +18,14 @@ const STATE_SIGLA = {
 
 function App() {
   const [localSelecionado, setLocalSelecionado] = useState(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Adicionado estado para controle do menu mobile
+  const [isMenuOpen, setIsMenuOpen] = useState(false); 
   const mapRef = useRef(null);
+  const chartsRef = useRef(null); // Referência para a seção de gráficos
+
+  // Função para rolar suavemente até os gráficos no mobile
+  const scrollToCharts = useCallback(() => {
+    chartsRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   // Chamado ao clicar em "Aplicar Filtros"
   const handleApplyFilters = useCallback((filters) => {
@@ -39,18 +45,14 @@ function App() {
       mapRef.current?.focusFeature('region', region);
 
     } else {
-      // "Todos" em todos os níveis → reseta foco e volta ao Brasil
       mapRef.current?.flyToBrazil();
       mapRef.current?.resetFocus();
       setLocalSelecionado(null);
     }
     
-    setIsMenuOpen(false); // Fecha o menu no mobile ao aplicar os filtros
+    setIsMenuOpen(false); 
   }, []);
 
-  // Chamado ao clicar em "Limpar Filtros" (via onApplyFilters com tudo em 'Todos')
-  // SidebarLeft já chama onApplyFilters com estado zerado no handleClear,
-  // mas também expõe onClearFilters para um reset explícito se necessário.
   const handleClearFilters = useCallback(() => {
     mapRef.current?.flyToBrazil();
     mapRef.current?.resetFocus();
@@ -71,7 +73,6 @@ function App() {
           style={{ height: '80px', width: 'auto', display: 'block' }}
         />
         
-        {/* Botão hambúrguer adicionado para mobile */}
         <button className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
           ☰
         </button>
@@ -79,7 +80,6 @@ function App() {
 
       {/* ── Corpo 3 colunas ── */}
       <div className="app-body">
-        {/* MODIFICADO: Overlay e container do menu lateral adicionados para mobile */}
         {isMenuOpen && <div className="mobile-overlay" onClick={() => setIsMenuOpen(false)} />}
         <div className={`sidebar-left-container ${isMenuOpen ? 'open' : ''}`}>
           <SidebarLeft
@@ -112,11 +112,14 @@ function App() {
             </div>
           )}
 
+          {/* Botão flutuante para facilitar navegação no mobile */}
+          <button className="mobile-scroll-btn" onClick={scrollToCharts}>
+            Ver Análises 📊
+          </button>
+
           <div className="map-legend">
-            {/* ALTERADO: Título atualizado para unidade real de medida */}
             <span className="map-legend-title">Sobras (MWh)</span>
             <div className="map-legend-items">
-              {/* ALTERADO: Valores e cores reais extraídos do Map.jsx */}
               {[
                 { color: '#fde0dd', label: '10+' },
                 { color: '#fa9fb5', label: '50+' },
@@ -132,8 +135,8 @@ function App() {
           </div>
         </div>
 
-        {/* Container extra para a SidebarRight para controlar fluxo mobile */}
-        <div className="sidebar-right-container">
+        {/* Container com a âncora de rolagem */}
+        <div className="sidebar-right-container" ref={chartsRef}>
           <SidebarRight selectedRegion={selectedRegion} />
         </div>
       </div>
