@@ -113,13 +113,15 @@ function App() {
           )}
 
           <div className="map-legend">
-            <span className="map-legend-title">Intensidade de Curtailment</span>
+            {/* ALTERADO: Título atualizado para unidade real de medida */}
+            <span className="map-legend-title">Sobras (MWh)</span>
             <div className="map-legend-items">
+              {/* ALTERADO: Valores e cores reais extraídos do Map.jsx */}
               {[
-                { color: '#F5F749', label: 'Baixo (<20%)' },
-                { color: '#F89069', label: 'Médio (20-30%)' },
-                { color: '#B5446E', label: 'Alto (30-40%)' },
-                { color: '#550C18', label: 'Crítico (>40%)' },
+                { color: '#fde0dd', label: '10+' },
+                { color: '#fa9fb5', label: '50+' },
+                { color: '#FA441A', label: '150+' },
+                { color: '#800026', label: '500+' },
               ].map(({ color, label }) => (
                 <div key={label} className="map-legend-item">
                   <div className="map-legend-dot" style={{ backgroundColor: color }} />
